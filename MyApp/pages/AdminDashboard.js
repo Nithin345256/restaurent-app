@@ -13,6 +13,7 @@ import {
   Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
 import { Picker } from "@react-native-picker/picker";
@@ -102,9 +103,7 @@ export default function AdminDashboard({ navigation }) {
         name: "menu-item.jpg",
       });
 
-      await api.post(`/admin/hotels/${hotelId}/menu/${menuId}/photo`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.post(`/admin/hotels/${hotelId}/menu/${menuId}/photo`, formData);
 
       Alert.alert("Success", "Photo added successfully!");
       fetchData();
@@ -159,24 +158,62 @@ export default function AdminDashboard({ navigation }) {
 
     setSubmitting(true);
     try {
+      console.log("=== Creating Common Item ===");
+      console.log("API Base URL:", api.defaults.baseURL);
+      
       const formData = new FormData();
-      formData.append("name", commonForm.name);
-      formData.append("category", commonForm.category);
+      formData.append("name", commonForm.name.trim());
+      formData.append("category", commonForm.category.trim());
       formData.append("foodType", commonForm.foodType);
-      formData.append("thaliEligible", commonForm.thaliEligible.toString());
+      formData.append("thaliEligible", commonForm.thaliEligible ? "true" : "false");
+      
+      const uri = commonForm.photo.uri;
+      const uriParts = uri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+      
       formData.append("photo", {
-        uri: commonForm.photo.uri,
-        type: "image/jpeg",
-        name: "common-item.jpg",
+        uri: uri,
+        name: `photo.${fileType}`,
+        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
       });
 
-  await api.post("/admin/common-menu", formData);
+      console.log("Submitting data:", {
+        name: commonForm.name.trim(),
+        category: commonForm.category.trim(),
+        foodType: commonForm.foodType,
+        thaliEligible: commonForm.thaliEligible,
+        photoUri: uri,
+      });
 
+      const token = await AsyncStorage.getItem("token");
+      
+      const response = await fetch(`${api.defaults.baseURL}/admin/common-menu`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || errorData.error || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Success! Response:", data);
+      
       Alert.alert("Success", "Common menu item created!");
       setCommonForm({ name: "", category: "", foodType: "veg", thaliEligible: false, photo: null });
       fetchData();
     } catch (error) {
-      Alert.alert("Error", error.response?.data?.message || "Failed to create item");
+      console.error("Create common item error:", error);
+      
+      let errorMessage = "Failed to create item.\n\n";
+      errorMessage += error.message || "Unknown error occurred";
+      
+      Alert.alert("Error", errorMessage);
     } finally {
       setSubmitting(false);
     }

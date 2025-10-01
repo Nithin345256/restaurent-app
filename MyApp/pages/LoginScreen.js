@@ -33,13 +33,7 @@ export default function Login({ navigation }) {
     try {
       const user = await login(trimmedEmail, trimmedPassword);
       Alert.alert("Success", "Login successful!");
-      if (user.role === "hotel") {
-        navigation.navigate("HotelHome");
-      } else if (user.role === "admin") {
-        navigation.navigate("AdminDashboard");
-      } else {
-        navigation.navigate("UserHome");
-      }
+      // Navigation will be handled automatically by AppNavigator based on user.role
     } catch (error) {
       console.error("Login error:", {
         message: error.message,

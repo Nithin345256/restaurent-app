@@ -116,55 +116,54 @@ export const deleteHotelById = async (req, res) => {
 
 // Create common menu item (admin only)
 export const createCommonMenuItem = async (req, res) => {
-  console.log('createCommonMenuItem called');
-  console.log('Request body:', req.body);
-  console.log('Request file:', req.file);
-  const { name, category, foodType, thaliEligible, type, items } = req.body;
-
-  if (!name || !category || !foodType) {
-    console.error('Missing required fields:', { name, category, foodType });
-    return res.status(400).json({ 
-      message: "Name, category, and foodType are required" 
-    });
-  }
-
-  if (!["veg", "nonveg"].includes(foodType)) {
-    console.error('Invalid foodType:', foodType);
-    return res.status(400).json({ 
-      message: "foodType must be 'veg' or 'nonveg'" 
-    });
-  }
-
-  if (!req.file) {
-    console.error('Photo file missing');
-    return res.status(400).json({ message: "Photo is required" });
-  }
-
   try {
-    const photoUrl = await uploadFile(req.file);
-
+    console.log('=== CREATE COMMON MENU ITEM ===');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('File:', req.file);
+    console.log('Files:', req.files);
+    console.log('User:', req.user);
+    if (req.file) {
+      console.log('File fieldname:', req.file.fieldname);
+      console.log('File originalname:', req.file.originalname);
+      console.log('File mimetype:', req.file.mimetype);
+      console.log('File path:', req.file.path);
+      console.log('File size:', req.file.size);
+    }
+    const { name, category, foodType, thaliEligible } = req.body;
+    // Validate required fields
+    if (!name || !category || !foodType) {
+      console.error('❌ Missing required fields:', { name, category, foodType });
+      return res.status(400).json({ 
+        error: 'Name, category, and foodType are required',
+        received: { name, category, foodType }
+      });
+    }
+    if (!req.file) {
+      console.error('❌ No file uploaded');
+      return res.status(400).json({ error: 'Photo is required' });
+    }
+  // Import the correct CommonMenuItem model
+  const CommonMenuItem = (await import('../models/commonMenu.js')).default || (await import('../models/commonMenu.js')).CommonMenuItem || (await import('../models/commonMenu.js')).default;
     const commonItem = new CommonMenuItem({
-      name,
-      category,
-      foodType,
-      price: null,
-      thaliEligible: !!thaliEligible,
-      type: type || "single",
-      items: items || [],
-      photo: photoUrl,
+      name: name.trim(),
+      category: category.trim(),
+      foodType: foodType.toLowerCase(),
+      thaliEligible: thaliEligible === 'true' || thaliEligible === true,
+      photo: `/uploads/${req.file.filename}`, // Adjust path as needed
     });
-
     await commonItem.save();
-    console.log('Common menu item created:', commonItem);
+    console.log('✓ Common menu item created:', commonItem);
     res.status(201).json({ 
-      message: "Common menu item created successfully", 
+      message: 'Common menu item created successfully',
       commonItem 
     });
   } catch (error) {
-    console.error("Create common menu item error:", error);
+    console.error('❌ [createCommonMenuItem] Error:', error);
     res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+      error: 'Failed to create common menu item',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
