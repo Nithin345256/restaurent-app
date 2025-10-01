@@ -35,7 +35,10 @@ export default function UserHome({ navigation }) {
         url = `/hotels/type?type=${filter}`;
       }
       const response = await api.get(url);
-      let fetchedHotels = response.data.hotels || [];
+      // Support both array and object response formats
+      let fetchedHotels = Array.isArray(response.data)
+        ? response.data
+        : response.data.hotels || [];
       if (searchQuery) {
         fetchedHotels = fetchedHotels.filter((hotel) =>
           hotel.name.toLowerCase().includes(searchQuery.toLowerCase())

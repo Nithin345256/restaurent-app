@@ -1,51 +1,54 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Replace with your backend URL
-const API_BASE_URL = "http://10.177.21.127:8000/api"; // e.g., http://192.168.1.100:5000/api
+const API_BASE_URL = "http://10.177.21.127:8000/api";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  timeout: 60000, // Increased timeout for file uploads
 });
 
-// Request interceptor - Add token to all requests
-// services/api.js
+// Request interceptor
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      // CRITICAL FIX: For React Native FormData
+      if (config.data instanceof FormData) {
+        // Don't set Content-Type - React Native will handle it
+        delete config.headers["Content-Type"];
+        delete config.headers["content-type"];
+        
+        // IMPORTANT: Don't stringify or transform FormData
+        config.transformRequest = [(data) => data];
+        
+        // Ensure proper headers for multipart
+        config.headers["Accept"] = "application/json";
+      } else {
+        config.headers["Content-Type"] = "application/json";
+      }
+
+      return config;
+    } catch (error) {
+      console.error("Request interceptor error:", error);
+      return Promise.reject(error);
     }
-    
-    // DON'T override Content-Type if it's already set (for FormData)
-    // React Native will set the correct boundary for multipart/form-data
-    if (config.headers['Content-Type'] === 'multipart/form-data') {
-      delete config.headers['Content-Type']; // Let axios handle it
-    }
-    
-    return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle errors
+// Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     if (error.response) {
-      // Server responded with error status
       const status = error.response.status;
 
       if (status === 401) {
-        // Unauthorized - clear storage and redirect to login
         try {
           await AsyncStorage.removeItem("token");
           await AsyncStorage.removeItem("user");
@@ -62,10 +65,8 @@ api.interceptors.response.use(
         console.error("Server error:", error.response.data);
       }
     } else if (error.request) {
-      // Request made but no response
       console.error("No response from server:", error.message);
     } else {
-      // Something else happened
       console.error("Request setup error:", error.message);
     }
 

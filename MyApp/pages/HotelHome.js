@@ -1,70 +1,82 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   TextInput,
-  Alert,
-  ActivityIndicator,
-  ImageBackground,
+  TouchableOpacity,
   Image,
+  ImageBackground,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
   Switch,
-} from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { AuthContext } from "../context/AuthContext";
-import { api } from "../services/api";
-import { Picker } from "@react-native-picker/picker";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+  StyleSheet,
+} from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import axios from 'axios'; // Assuming axios is used for API calls
 
+// Assuming Header and Footer are custom components
+import Header from '../components/Header'; // Adjust path as needed
+import Footer from '../components/Footer'; // Adjust path as needed
+
+// Configure API client
+const api = axios.create({
+  baseURL: 'http://10.177.21.127:8000/api',
+  headers: {
+    'Content-Type': 'multipart/form-data', // For FormData requests
+  },
+});
+
+// Add Authorization header with token for authenticated requests
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default function HotelDashboard({ navigation }) {
-  const { user, logout } = useContext(AuthContext);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [hotel, setHotel] = useState(null);
-  const [commonMenuItems, setCommonMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Hotel Registration Form
+  // State declarations
   const [hotelForm, setHotelForm] = useState({
-    name: "",
-    place: "",
-    address: "",
-    lat: "",
-    long: "",
+    name: '',
+    place: '',
+    address: '',
+    lat: '',
+    long: '',
     options: [],
     photo: null,
   });
-
-  // Menu Item Form
   const [menuForm, setMenuForm] = useState({
-    name: "",
-    category: "",
-    foodType: "veg",
-    price: "",
+    name: '',
+    category: '',
+    foodType: 'veg',
+    price: '',
     thaliEligible: false,
-    type: "single",
+    type: 'single',
   });
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [hotel, setHotel] = useState(null);
+  const [commonMenuItems, setCommonMenuItems] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch data on component mount
   useEffect(() => {
     fetchData();
   }, []);
 
+  // Fetch hotel and common menu items
   const fetchData = async () => {
     setLoading(true);
     try {
-      console.log('Fetching hotel details...');
-
       // Check if hotel is registered
-      const hotelRes = await api.get("/hotels/my-hotel/details");
-
+      const hotelRes = await api.get('/hotels/my-hotel/details');
       console.log('Hotel response:', hotelRes.data);
 
-      // Backend returns hotel directly, not wrapped in { hotel: ... }
+      // Backend returns hotel directly
       if (hotelRes.data) {
         setIsRegistered(true);
         setHotel(hotelRes.data);
@@ -73,20 +85,19 @@ export default function HotelDashboard({ navigation }) {
 
       // Fetch common menu items
       console.log('Fetching common menu items...');
-      const commonRes = await api.get("/common-menu");
+      const commonRes = await api.get('/common-menu');
       console.log('Common items response:', commonRes.data);
 
       setCommonMenuItems(commonRes.data || []);
-
     } catch (error) {
-      console.error("Fetch error:", {
+      console.error('Fetch error:', {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data,
       });
 
       if (error.response?.status === 404) {
-        // Hotel not found - this is expected for new hotel users
+        // Hotel not found - expected for new hotel users
         console.log('No hotel registered yet for this user');
         setIsRegistered(false);
         setHotel(null);
@@ -113,8 +124,8 @@ export default function HotelDashboard({ navigation }) {
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission required", "We need access to your photos.");
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'We need access to your photos.');
       return;
     }
 
@@ -127,124 +138,151 @@ export default function HotelDashboard({ navigation }) {
     });
 
     if (!result.canceled && result.assets?.length > 0) {
-      setHotelForm({ ...hotelForm, photo: result.assets[0] });
+      const asset = result.assets[0];
+      let fileName = asset.fileName;
+      if (!fileName) {
+        const uriParts = asset.uri.split('/');
+        fileName = uriParts[uriParts.length - 1];
+      }
+      setHotelForm({ ...hotelForm, photo: { ...asset, fileName } });
     }
   };
 
-const handleRegisterHotel = async () => {
-  // Validate all required fields
-  if (!hotelForm.name || !hotelForm.address || !hotelForm.place) {
-    Alert.alert("Error", "Please fill all required fields");
-    return;
-  }
-
-  if (hotelForm.options.length === 0) {
-    Alert.alert("Error", "Please select at least one option (Veg/Non-Veg)");
-    return;
-  }
-
-  if (!hotelForm.photo) {
-    Alert.alert("Error", "Please select a restaurant photo");
-    return;
-  }
-
-  setSubmitting(true);
-  try {
-    const formData = new FormData();
-    formData.append("name", hotelForm.name);
-    formData.append("place", hotelForm.place);
-    formData.append("address", hotelForm.address);
-    formData.append("lat", hotelForm.lat || "0");
-    formData.append("long", hotelForm.long || "0");
-    formData.append("options", JSON.stringify(hotelForm.options));
-
-    const photo = hotelForm.photo;
-    const uriParts = photo.uri.split('.');
-    const fileExtension = uriParts[uriParts.length - 1].toLowerCase();
-
-    let mimeType = "image/jpeg"; // Default
-    if (fileExtension === 'png') mimeType = "image/png";
-    else if (fileExtension === 'jpg' || fileExtension === 'jpeg') mimeType = "image/jpeg";
-    else if (fileExtension === 'gif') mimeType = "image/gif";
-    else if (fileExtension === 'webp') mimeType = "image/webp";
-
-    // Append the photo with the correct structure
-    formData.append("photo", {
-      uri: photo.uri,
-      type: mimeType,
-      name: photo.fileName || `hotel_${Date.now()}.${fileExtension}`,
-    });
-
-    console.log("Sending FormData:", {
-      name: hotelForm.name,
-      place: hotelForm.place,
-      address: hotelForm.address,
-      lat: hotelForm.lat,
-      long: hotelForm.long,
-      options: hotelForm.options,
-      photo: {
-        uri: photo.uri,
-        type: mimeType,
-        name: photo.fileName || `hotel_${Date.now()}.${fileExtension}`,
-      },
-    });
-
-    // Send the request
-    const response = await api.post("/hotels", formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    console.log("Hotel registered successfully:", response.data);
-
-    setIsRegistered(true);
-    setHotel(response.data.hotel);
-
-    Alert.alert("Success", "Hotel registered successfully!");
-
-    // Reset form
-    setHotelForm({
-      name: "",
-      place: "",
-      address: "",
-      lat: "",
-      long: "",
-      options: [],
-      photo: null,
-    });
-
-    await fetchData();
-  } catch (error) {
-    console.error("Register error:", error);
-    console.error("Error response:", error.response?.data);
-    console.error("Error status:", error.response?.status);
-
-    let errorMessage = "Failed to register hotel";
-    if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    } else if (error.message.includes('Network request failed')) {
-      errorMessage = 'Network error. Please check your connection and ensure backend is running.';
-    } else if (error.message) {
-      errorMessage = error.message;
+  const handleRegisterHotel = async () => {
+    // Validate required fields
+    if (!hotelForm.name || !hotelForm.place || !hotelForm.address) {
+      Alert.alert('Error', 'Please fill all required fields');
+      return;
     }
 
-    Alert.alert("Error", errorMessage);
-  } finally {
-    setSubmitting(false);
-  }
-};
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('name', hotelForm.name.trim());
+      formData.append('place', hotelForm.place.trim());
+      formData.append('address', hotelForm.address.trim());
+      formData.append('lat', hotelForm.lat || '0');
+      formData.append('long', hotelForm.long || '0');
+      formData.append('options', JSON.stringify(hotelForm.options));
+
+      // Handle photo if present
+      if (hotelForm.photo) {
+        const photo = hotelForm.photo;
+        const uriParts = photo.uri.split('.');
+        const fileExtension = uriParts[uriParts.length - 1].toLowerCase();
+
+        let mimeType = 'image/jpeg';
+        if (fileExtension === 'png') mimeType = 'image/png';
+        else if (fileExtension === 'jpg' || fileExtension === 'jpeg') mimeType = 'image/jpeg';
+        else if (fileExtension === 'gif') mimeType = 'image/gif';
+        else if (fileExtension === 'webp') mimeType = 'image/webp';
+
+        const fileName = photo.fileName || `hotel_${Date.now()}.${fileExtension}`;
+        let photoUri = photo.uri;
+        if (!photoUri.startsWith('file://')) {
+          photoUri = 'file://' + photoUri;
+        }
+
+        formData.append('photo', {
+          uri: photoUri,
+          type: mimeType,
+          name: fileName,
+        });
+      }
+
+      const token = await AsyncStorage.getItem('token');
+      console.log('[HotelHome] Token before request:', token);
+      console.log('Attempting hotel registration...');
+      console.log('API Base URL:', 'http://10.177.21.127:8000/api');
+      console.log('Endpoint:', '/hotels');
+
+      const response = await api.post('/hotels', formData);
+      console.log('✓ Hotel registered successfully!');
+      console.log('Response:', response.data);
+
+      // Update state after successful registration
+      setIsRegistered(true);
+      setHotel(response.data);
+      Alert.alert('Success', 'Hotel registered successfully!');
+      await fetchData();
+    } catch (error) {
+      console.error('Registration error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to register hotel'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddMenuItem = async () => {
+    if (!menuForm.name || !menuForm.category || !menuForm.price) {
+      Alert.alert('Error', 'Please fill all required fields');
+      return;
+    }
+
+    if (isNaN(parseFloat(menuForm.price)) || parseFloat(menuForm.price) <= 0) {
+      Alert.alert('Error', 'Please enter a valid price');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const menuData = {
+        name: menuForm.name,
+        category: menuForm.category,
+        foodType: menuForm.foodType,
+        price: parseFloat(menuForm.price),
+        thaliEligible: menuForm.thaliEligible,
+        type: menuForm.type,
+      };
+
+      console.log('Adding menu item:', menuData);
+      const response = await api.post('/hotels/add-menu-item', menuData);
+      console.log('Menu item added successfully:', response.data);
+
+      setHotel(response.data.hotel);
+      Alert.alert('Success', 'Menu item added successfully!');
+
+      // Reset menu form
+      setMenuForm({
+        name: '',
+        category: '',
+        foodType: 'veg',
+        price: '',
+        thaliEligible: false,
+        type: 'single',
+      });
+
+      await fetchData();
+    } catch (error) {
+      console.error('Add menu item error:', error);
+      console.error('Error response:', error.response?.data);
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Failed to add menu item'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleAddCommonItem = async (commonItemId, itemName) => {
     Alert.prompt(
-      "Set Price",
+      'Set Price',
       `Enter price for ${itemName}:`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Add",
+          text: 'Add',
           onPress: async (price) => {
             if (!price || isNaN(parseFloat(price))) {
-              Alert.alert("Error", "Please enter a valid price");
+              Alert.alert('Error', 'Please enter a valid price');
               return;
             }
             try {
@@ -253,14 +291,18 @@ const handleRegisterHotel = async () => {
                 { price: parseFloat(price) }
               );
               setHotel(response.data.hotel);
-              Alert.alert("Success", "Item added to your menu!");
+              Alert.alert('Success', 'Item added to your menu!');
+              await fetchData();
             } catch (error) {
-              Alert.alert("Error", error.response?.data?.message || "Failed to add item");
+              Alert.alert(
+                'Error',
+                error.response?.data?.message || 'Failed to add item'
+              );
             }
           },
         },
       ],
-      "plain-text"
+      'plain-text'
     );
   };
 
@@ -271,6 +313,12 @@ const handleRegisterHotel = async () => {
         ? prev.options.filter((opt) => opt !== option)
         : [...prev.options, option],
     }));
+  };
+
+  // Placeholder logout function (implement as needed)
+  const logout = async () => {
+    await AsyncStorage.removeItem('token');
+    navigation.replace('Login'); // Adjust navigation as per your app
   };
 
   if (loading) {
@@ -290,14 +338,13 @@ const handleRegisterHotel = async () => {
       <Header title="Hotel Dashboard" showLogout={true} onLogout={logout} />
       <ImageBackground
         source={{
-          uri: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80",
+          uri: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80',
         }}
         style={styles.background}
         blurRadius={3}
       >
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {!isRegistered ? (
-            // Hotel Registration Form
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Register Your Restaurant</Text>
               <Text style={styles.cardSubtitle}>Fill in the details to get started</Text>
@@ -350,18 +397,18 @@ const handleRegisterHotel = async () => {
               <Text style={styles.label}>Restaurant Type *</Text>
               <View style={styles.optionsRow}>
                 <TouchableOpacity
-                  style={[styles.optionButton, hotelForm.options.includes("veg") && styles.optionButtonActive]}
-                  onPress={() => toggleOption("veg")}
+                  style={[styles.optionButton, hotelForm.options.includes('veg') && styles.optionButtonActive]}
+                  onPress={() => toggleOption('veg')}
                 >
-                  <Text style={[styles.optionText, hotelForm.options.includes("veg") && styles.optionTextActive]}>
+                  <Text style={[styles.optionText, hotelForm.options.includes('veg') && styles.optionTextActive]}>
                     Veg
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.optionButton, hotelForm.options.includes("nonveg") && styles.optionButtonActive]}
-                  onPress={() => toggleOption("nonveg")}
+                  style={[styles.optionButton, hotelForm.options.includes('nonveg') && styles.optionButtonActive]}
+                  onPress={() => toggleOption('nonveg')}
                 >
-                  <Text style={[styles.optionText, hotelForm.options.includes("nonveg") && styles.optionTextActive]}>
+                  <Text style={[styles.optionText, hotelForm.options.includes('nonveg') && styles.optionTextActive]}>
                     Non-Veg
                   </Text>
                 </TouchableOpacity>
@@ -393,17 +440,17 @@ const handleRegisterHotel = async () => {
               </TouchableOpacity>
             </View>
           ) : (
-            // Hotel Dashboard
             <>
-              {/* Hotel Info Card */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{hotel.name}</Text>
-                <Text style={styles.infoText}>{hotel.address}, {hotel.place}</Text>
+                <Text style={styles.infoText}>
+                  {hotel.address}, {hotel.place}
+                </Text>
                 <View style={styles.optionsRow}>
                   {hotel.options.map((opt) => (
-                    <View key={opt} style={opt === "veg" ? styles.vegBadge : styles.nonVegBadge}>
-                      <Text style={opt === "veg" ? styles.vegText : styles.nonVegText}>
-                        {opt === "veg" ? "Veg" : "Non-Veg"}
+                    <View key={opt} style={opt === 'veg' ? styles.vegBadge : styles.nonVegBadge}>
+                      <Text style={opt === 'veg' ? styles.vegText : styles.nonVegText}>
+                        {opt === 'veg' ? 'Veg' : 'Non-Veg'}
                       </Text>
                     </View>
                   ))}
@@ -411,7 +458,6 @@ const handleRegisterHotel = async () => {
                 {hotel.photo && <Image source={{ uri: hotel.photo }} style={styles.hotelImage} />}
               </View>
 
-              {/* Add Menu Item Card */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Add Menu Item</Text>
                 <Text style={styles.cardSubtitle}>Photo will be added by admin</Text>
@@ -458,8 +504,8 @@ const handleRegisterHotel = async () => {
                   <Switch
                     value={menuForm.thaliEligible}
                     onValueChange={(value) => setMenuForm({ ...menuForm, thaliEligible: value })}
-                    trackColor={{ false: "#D1D5DB", true: "#FCA5A5" }}
-                    thumbColor={menuForm.thaliEligible ? "#E23744" : "#F3F4F6"}
+                    trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }}
+                    thumbColor={menuForm.thaliEligible ? '#E23744' : '#F3F4F6'}
                   />
                 </View>
 
@@ -476,7 +522,6 @@ const handleRegisterHotel = async () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Current Menu Card */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Your Menu</Text>
                 {hotel.menu?.length > 0 ? (
@@ -499,7 +544,6 @@ const handleRegisterHotel = async () => {
                 )}
               </View>
 
-              {/* Common Menu Items Card */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Add Common Items</Text>
                 <Text style={styles.cardSubtitle}>Quick add popular items to your menu</Text>
@@ -535,7 +579,7 @@ const handleRegisterHotel = async () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
   },
   background: {
     flex: 1,
@@ -549,15 +593,15 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -565,31 +609,31 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: "#6B7280",
+    color: '#6B7280',
     marginBottom: 16,
   },
   input: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderColor: '#E5E7EB',
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
-    color: "#111827",
+    color: '#111827',
     marginBottom: 12,
   },
   textArea: {
     height: 80,
-    textAlignVertical: "top",
+    textAlignVertical: 'top',
   },
   coordinateRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 12,
   },
   coordinateInput: {
@@ -597,13 +641,13 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
+    fontWeight: '600',
+    color: '#374151',
     marginBottom: 8,
     marginTop: 4,
   },
   optionsRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
   },
@@ -612,145 +656,145 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
   },
   optionButtonActive: {
-    backgroundColor: "#E23744",
-    borderColor: "#E23744",
+    backgroundColor: '#E23744',
+    borderColor: '#E23744',
   },
   optionText: {
-    color: "#374151",
-    fontWeight: "700",
+    color: '#374151',
+    fontWeight: '700',
     fontSize: 16,
   },
   optionTextActive: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
   preview: {
-    width: "100%",
+    width: '100%',
     height: 200,
     borderRadius: 12,
     marginBottom: 12,
   },
   photoPlaceholder: {
-    width: "100%",
+    width: '100%',
     height: 200,
     borderRadius: 12,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: "#E5E7EB",
-    borderStyle: "dashed",
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
   },
   photoPlaceholderText: {
-    color: "#9CA3AF",
+    color: '#9CA3AF',
     fontSize: 16,
   },
   photoButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: "#E23744",
+    borderColor: '#E23744',
     borderRadius: 10,
     padding: 14,
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 16,
   },
   photoButtonText: {
-    color: "#E23744",
+    color: '#E23744',
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   submitButton: {
-    backgroundColor: "#E23744",
+    backgroundColor: '#E23744',
     borderRadius: 10,
     padding: 16,
-    alignItems: "center",
-    shadowColor: "#E23744",
+    alignItems: 'center',
+    shadowColor: '#E23744',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: "#FCA5A5",
+    backgroundColor: '#FCA5A5',
   },
   submitButtonText: {
-    color: "#FFFFFF",
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   infoText: {
     fontSize: 14,
-    color: "#6B7280",
+    color: '#6B7280',
     marginBottom: 12,
   },
   vegBadge: {
-    backgroundColor: "#ECFDF5",
+    backgroundColor: '#ECFDF5',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#10B981",
+    borderColor: '#10B981',
   },
   vegText: {
-    color: "#047857",
+    color: '#047857',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   nonVegBadge: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: '#FEF2F2',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E23744",
+    borderColor: '#E23744',
   },
   nonVegText: {
-    color: "#E23744",
+    color: '#E23744',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   hotelImage: {
-    width: "100%",
+    width: '100%',
     height: 180,
     borderRadius: 12,
     marginTop: 12,
   },
   pickerContainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderColor: '#E5E7EB',
     borderRadius: 10,
     marginBottom: 12,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
   },
   switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
     paddingVertical: 8,
   },
   switchLabel: {
     fontSize: 16,
-    color: "#374151",
-    fontWeight: "600",
+    color: '#374151',
+    fontWeight: '600',
   },
   menuItem: {
-    flexDirection: "row",
-    backgroundColor: "#F9FAFB",
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: '#E5E7EB',
   },
   menuItemImage: {
     width: 80,
@@ -760,39 +804,39 @@ const styles = StyleSheet.create({
   },
   menuItemInfo: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: 'center',
   },
   menuItemName: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 4,
   },
   menuItemDetails: {
     fontSize: 14,
-    color: "#6B7280",
+    color: '#6B7280',
   },
   thaliTag: {
     fontSize: 12,
-    color: "#E23744",
-    fontWeight: "600",
+    color: '#E23744',
+    fontWeight: '600',
     marginTop: 4,
   },
   emptyText: {
-    textAlign: "center",
-    color: "#9CA3AF",
+    textAlign: 'center',
+    color: '#9CA3AF',
     fontSize: 16,
     paddingVertical: 20,
   },
   commonItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: '#E5E7EB',
   },
   commonItemImage: {
     width: 60,
@@ -805,23 +849,23 @@ const styles = StyleSheet.create({
   },
   commonItemName: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 4,
   },
   commonItemDetails: {
     fontSize: 14,
-    color: "#6B7280",
+    color: '#6B7280',
   },
   addCommonButton: {
-    backgroundColor: "#E23744",
+    backgroundColor: '#E23744',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   addCommonButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
+    color: '#FFFFFF',
+    fontWeight: '700',
     fontSize: 14,
   },
 });

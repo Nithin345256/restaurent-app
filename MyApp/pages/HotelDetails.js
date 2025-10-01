@@ -36,7 +36,9 @@ export default function HotelDetails() {
       }
       try {
         const res = await api.get(`/hotels/${hotelId}`);
-        setHotel(res.data.hotel || null);
+        // Support both object and {hotel: ...} response formats
+        let fetchedHotel = res.data.hotel || res.data;
+        setHotel(fetchedHotel || null);
       } catch (e) {
         console.error("Fetch hotel error:", e.response?.data || e.message);
         Alert.alert("Error", e.response?.data?.message || "Failed to fetch hotel details");

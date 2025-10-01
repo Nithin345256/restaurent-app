@@ -123,6 +123,30 @@ export const login = async (req, res) => {
   }
 
   try {
+    // Admin login via .env credentials
+    if (
+      email.toLowerCase() === (process.env.ADMIN_EMAIL || '').toLowerCase() &&
+      password === process.env.ADMIN_PASSWORD
+    ) {
+      const token = jwt.sign(
+        { id: 'admin', role: 'admin' },
+        process.env.JWT_SECRET || "your_jwt_secret_key",
+        { expiresIn: "7d" }
+      );
+      return res.status(200).json({
+        message: "Login successful",
+        token,
+        user: {
+          id: 'admin',
+          firstName: 'Admin',
+          secondName: '',
+          email: process.env.ADMIN_EMAIL,
+          phoneNumber: '',
+          role: 'admin',
+        },
+      });
+    }
+
     // Find user (case-insensitive email lookup)
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {

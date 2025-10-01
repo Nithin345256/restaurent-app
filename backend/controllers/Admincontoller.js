@@ -35,13 +35,11 @@ export const getAllHotels = async (req, res) => {
 // Get all hotels with pending menu items (items without approved photos)
 export const getHotelsWithPendingItems = async (req, res) => {
   try {
-    const hotels = await Hotel.find({
-      'menu.photoApproved': false
-    }).populate('userId', 'firstName secondName email phone');
-    
+    // Get all hotels
+    const hotels = await Hotel.find().populate('userId', 'firstName secondName email phone');
     // Filter to only show hotels with pending items
     const hotelsWithPending = hotels.map(hotel => {
-      const pendingItems = hotel.menu.filter(item => !item.photoApproved);
+      const pendingItems = hotel.menu.filter(item => item.photoApproved === false);
       return {
         ...hotel.toObject(),
         menu: pendingItems
@@ -118,21 +116,27 @@ export const deleteHotelById = async (req, res) => {
 
 // Create common menu item (admin only)
 export const createCommonMenuItem = async (req, res) => {
+  console.log('createCommonMenuItem called');
+  console.log('Request body:', req.body);
+  console.log('Request file:', req.file);
   const { name, category, foodType, thaliEligible, type, items } = req.body;
 
   if (!name || !category || !foodType) {
+    console.error('Missing required fields:', { name, category, foodType });
     return res.status(400).json({ 
       message: "Name, category, and foodType are required" 
     });
   }
 
   if (!["veg", "nonveg"].includes(foodType)) {
+    console.error('Invalid foodType:', foodType);
     return res.status(400).json({ 
       message: "foodType must be 'veg' or 'nonveg'" 
     });
   }
 
   if (!req.file) {
+    console.error('Photo file missing');
     return res.status(400).json({ message: "Photo is required" });
   }
 
@@ -151,6 +155,7 @@ export const createCommonMenuItem = async (req, res) => {
     });
 
     await commonItem.save();
+    console.log('Common menu item created:', commonItem);
     res.status(201).json({ 
       message: "Common menu item created successfully", 
       commonItem 

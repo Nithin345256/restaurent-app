@@ -34,11 +34,11 @@ export default function Login({ navigation }) {
       const user = await login(trimmedEmail, trimmedPassword);
       Alert.alert("Success", "Login successful!");
       if (user.role === "hotel") {
-        navigation.navigate("HotelPage");
+        navigation.navigate("HotelHome");
       } else if (user.role === "admin") {
-        navigation.navigate("AdminPage");
+        navigation.navigate("AdminDashboard");
       } else {
-        navigation.navigate("UserPage");
+        navigation.navigate("UserHome");
       }
     } catch (error) {
       console.error("Login error:", {

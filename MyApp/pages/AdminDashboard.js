@@ -58,10 +58,10 @@ export default function AdminDashboard({ navigation }) {
         api.get("/admin/common-menu"),
       ]);
 
-      setUsers(usersRes.data.users || []);
-      setHotels(hotelsRes.data.hotels || []);
-      setPendingMenuItems(pendingRes.data.hotels || []);
-      setCommonMenuItems(commonRes.data.commonMenuItems || []);
+      setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.users || []);
+      setHotels(Array.isArray(hotelsRes.data) ? hotelsRes.data : hotelsRes.data.hotels || []);
+      setPendingMenuItems(Array.isArray(pendingRes.data) ? pendingRes.data : pendingRes.data.hotels || []);
+      setCommonMenuItems(Array.isArray(commonRes.data) ? commonRes.data : commonRes.data.commonMenuItems || []);
     } catch (error) {
       console.error("Fetch error:", error.response?.data || error.message);
       Alert.alert("Error", error.response?.data?.message || "Failed to fetch data");
@@ -170,9 +170,7 @@ export default function AdminDashboard({ navigation }) {
         name: "common-item.jpg",
       });
 
-      await api.post("/admin/common-menu", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+  await api.post("/admin/common-menu", formData);
 
       Alert.alert("Success", "Common menu item created!");
       setCommonForm({ name: "", category: "", foodType: "veg", thaliEligible: false, photo: null });

@@ -4,7 +4,8 @@ import User from "../models/users.js";
 // Authentication Middleware
 export const authMiddleware = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization?.split(" ")[1];
+  console.log("[authMiddleware] Incoming token:", req.headers.authorization);
 
     if (!token) {
       return res.status(401).json({ 
@@ -16,6 +17,7 @@ export const authMiddleware = async (req, res, next) => {
       token, 
       process.env.JWT_SECRET || "your_jwt_secret_key"
     );
+    console.log("[authMiddleware] Decoded token:", decoded);
 
     // Handle admin token
     if (decoded.id === 'admin') {
@@ -35,6 +37,7 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     req.user = {
+      userId: user._id, // For HotelController compatibility
       id: user._id,
       _id: user._id,
       role: user.role,
@@ -42,6 +45,7 @@ export const authMiddleware = async (req, res, next) => {
       firstName: user.firstName,
       secondName: user.secondName,
     };
+    console.log("[authMiddleware] Authenticated user:", req.user);
 
     next();
   } catch (error) {
