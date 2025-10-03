@@ -130,7 +130,7 @@ export const createCommonMenuItem = async (req, res) => {
       console.log('File path:', req.file.path);
       console.log('File size:', req.file.size);
     }
-    const { name, category, foodType, thaliEligible } = req.body;
+  const { name, category, foodType, thaliEligible, mealType, type, items, thaliOptions } = req.body;
     // Validate required fields
     if (!name || !category || !foodType) {
       console.error('❌ Missing required fields:', { name, category, foodType });
@@ -150,7 +150,11 @@ export const createCommonMenuItem = async (req, res) => {
       category: category.trim(),
       foodType: foodType.toLowerCase(),
       thaliEligible: thaliEligible === 'true' || thaliEligible === true,
-      photo: `/uploads/${req.file.filename}`, // Adjust path as needed
+      mealType: mealType || "breakfast",
+      type: type || "single",
+      items: items || [],
+      thaliOptions: thaliOptions || null,
+      photo: `/uploads/${req.file.filename}`,
     });
     await commonItem.save();
     console.log('✓ Common menu item created:', commonItem);

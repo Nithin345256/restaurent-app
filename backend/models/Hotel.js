@@ -8,11 +8,15 @@ const MenuItemSchema = new mongoose.Schema(
       trim: true,
       maxLength: 100,
     },
+    mealType: {  // ← MUST come before category
+      type: String,
+      enum: ["breakfast", "lunch", "dinner"],
+      required: true,
+    },
     category: {
       type: String,
-      required: true,
-      trim: true,
-      maxLength: 50,
+      required: false,  // Make it optional for now to avoid validation issues
+      default: "",
     },
     foodType: {
       type: String,
@@ -36,6 +40,10 @@ const MenuItemSchema = new mongoose.Schema(
     items: {
       type: [String],
       default: [],
+    },
+    thaliOptions: {
+      type: Object,
+      default: null,
     },
     photo: {
       type: String,
@@ -108,28 +116,6 @@ const HotelSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// Static method to calculate total price
-HotelSchema.statics.calculateTotal = async function (selectedItems) {
-  try {
-    let total = 0;
-    for (const item of selectedItems) {
-      const hotel = await this.findOne({ "menu._id": item.menuItemId });
-      if (hotel) {
-        const menuItem = hotel.menu.id(item.menuItemId);
-        if (menuItem) {
-          total += menuItem.price * (item.quantity || 1);
-        }
-      }
-    }
-    return total;
-  } catch (error) {
-    throw new Error(`Failed to calculate total: ${error.message}`);
-  }
-};
-
-HotelSchema.index({ name: 1 }, { unique: true });
-HotelSchema.index({ userId: 1 });
 
 const Hotel = mongoose.models.Hotel || mongoose.model("Hotel", HotelSchema);
 export default Hotel;

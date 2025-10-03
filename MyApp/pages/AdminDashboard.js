@@ -9,7 +9,6 @@ import {
   Alert,
   Image,
   ActivityIndicator,
-  ImageBackground,
   Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -17,8 +16,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
 import { Picker } from "@react-native-picker/picker";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
 
 export default function AdminDashboard({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -245,6 +242,17 @@ export default function AdminDashboard({ navigation }) {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Logout", style: "destructive", onPress: logout }
+      ]
+    );
+  };
+
   if (!user?.id || user?.role !== "admin") {
     return null;
   }
@@ -252,23 +260,44 @@ export default function AdminDashboard({ navigation }) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title="Loading..." showLogout={true} onLogout={logout} />
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#E23744" />
-        </View>
-        <Footer />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText}>🍽️</Text>
+            </View>
+            <View style={styles.centerContent}>
+              <Text style={styles.title}>Admin Dashboard</Text>
+              <Text style={styles.subtitle}>Manage your platform</Text>
+            </View>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#EF4444" />
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header title="Admin Dashboard" showLogout={true} onLogout={logout} />
-      <ImageBackground
-        source={{ uri: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=1920&q=80" }}
-        style={styles.background}
-        blurRadius={3}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>🍽️</Text>
+          </View>
+          <View style={styles.centerContent}>
+            <Text style={styles.title}>Admin Dashboard</Text>
+            <Text style={styles.subtitle}>Manage your platform</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === "pending" && styles.tabActive]}
@@ -296,199 +325,527 @@ export default function AdminDashboard({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {activeTab === "pending" && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Menu Items Without Photos</Text>
-              {pendingMenuItems.length > 0 ? (
-                pendingMenuItems.map((hotel) => (
-                  <View key={hotel._id} style={styles.hotelSection}>
-                    <Text style={styles.hotelName}>{hotel.name}</Text>
-                    {hotel.menu.filter((item) => !item.photo).map((item) => (
-                      <View key={item._id} style={styles.menuItem}>
-                        <View style={styles.menuItemInfo}>
-                          <Text style={styles.menuItemName}>{item.name}</Text>
-                          <Text style={styles.menuItemDetails}>{item.category} • {item.foodType} • ₹{item.price}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.addPhotoButton}
-                          onPress={() => handleAddPhotoToMenuItem(hotel._id, item._id)}
-                        >
-                          <Text style={styles.addPhotoButtonText}>Add Photo</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.emptyText}>No pending items</Text>
-              )}
-            </View>
-          )}
-
-          {activeTab === "hotels" && (
-            <>
-              {hotels.map((hotel) => (
-                <View key={hotel._id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <Text style={styles.cardTitle}>{hotel.name}</Text>
-                      <Text style={styles.hotelInfo}>{hotel.address}</Text>
-                    </View>
-                    <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteHotel(hotel._id)}>
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.sectionTitle}>Menu</Text>
-                  {hotel.menu?.map((item) => (
+        {activeTab === "pending" && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Menu Items Without Photos</Text>
+            {pendingMenuItems.length > 0 ? (
+              pendingMenuItems.map((hotel) => (
+                <View key={hotel._id} style={styles.hotelSection}>
+                  <Text style={styles.hotelName}>{hotel.name}</Text>
+                  {hotel.menu.filter((item) => !item.photo).map((item) => (
                     <View key={item._id} style={styles.menuItem}>
-                      {item.photo && <Image source={{ uri: item.photo }} style={styles.menuItemImage} />}
                       <View style={styles.menuItemInfo}>
                         <Text style={styles.menuItemName}>{item.name}</Text>
-                        <Text style={styles.menuItemDetails}>{item.category} • ₹{item.price}</Text>
+                        <Text style={styles.menuItemDetails}>{item.category} • {item.foodType} • ₹{item.price}</Text>
                       </View>
                       <TouchableOpacity
-                        style={styles.deleteButtonSmall}
-                        onPress={() => handleDeleteMenuItem(hotel._id, item._id)}
+                        style={styles.addPhotoButton}
+                        onPress={() => handleAddPhotoToMenuItem(hotel._id, item._id)}
                       >
-                        <Text style={styles.deleteButtonTextSmall}>Delete</Text>
+                        <Text style={styles.addPhotoButtonText}>Add Photo</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
                 </View>
-              ))}
-            </>
-          )}
-
-          {activeTab === "users" && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>All Users</Text>
-              {users.map((user) => (
-                <View key={user._id} style={styles.userItem}>
-                  <View>
-                    <Text style={styles.userName}>{user.firstName} {user.secondName}</Text>
-                    <Text style={styles.userEmail}>{user.email}</Text>
-                  </View>
-                  <View style={styles.roleBadge}>
-                    <Text style={styles.roleText}>{user.role}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {activeTab === "common" && (
-            <>
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Create Common Item</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Item Name"
-                  value={commonForm.name}
-                  onChangeText={(text) => setCommonForm({ ...commonForm, name: text })}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Category"
-                  value={commonForm.category}
-                  onChangeText={(text) => setCommonForm({ ...commonForm, category: text })}
-                />
-                <Picker
-                  selectedValue={commonForm.foodType}
-                  onValueChange={(value) => setCommonForm({ ...commonForm, foodType: value })}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Veg" value="veg" />
-                  <Picker.Item label="Non-Veg" value="nonveg" />
-                </Picker>
-                <View style={styles.switchRow}>
-                  <Text>Thali Eligible</Text>
-                  <Switch
-                    value={commonForm.thaliEligible}
-                    onValueChange={(value) => setCommonForm({ ...commonForm, thaliEligible: value })}
-                  />
-                </View>
-                {commonForm.photo && <Image source={{ uri: commonForm.photo.uri }} style={styles.preview} />}
-                <TouchableOpacity style={styles.photoButton} onPress={selectPhotoForCommon}>
-                  <Text style={styles.photoButtonText}>Choose Photo</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.submitButton} onPress={handleCreateCommonItem} disabled={submitting}>
-                  <Text style={styles.submitButtonText}>{submitting ? "Creating..." : "Create"}</Text>
-                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No pending items</Text>
               </View>
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Common Items</Text>
-                {commonMenuItems.map((item) => (
-                  <View key={item._id} style={styles.commonItem}>
-                    {item.photo && <Image source={{ uri: item.photo }} style={styles.commonItemImage} />}
-                    <View style={styles.commonItemInfo}>
-                      <Text style={styles.commonItemName}>{item.name}</Text>
-                      <Text>{item.category} • {item.foodType}</Text>
+            )}
+          </View>
+        )}
+
+        {activeTab === "hotels" && (
+          <>
+            {hotels.map((hotel) => (
+              <View key={hotel._id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardHeaderLeft}>
+                    <Text style={styles.cardTitle}>{hotel.name}</Text>
+                    <Text style={styles.hotelInfo}>{hotel.address}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteHotel(hotel._id)}>
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.sectionTitle}>Menu</Text>
+                {hotel.menu?.map((item) => (
+                  <View key={item._id} style={styles.menuItem}>
+                    {item.photo && <Image source={{ uri: item.photo }} style={styles.menuItemImage} />}
+                    <View style={styles.menuItemInfo}>
+                      <Text style={styles.menuItemName}>{item.name}</Text>
+                      <Text style={styles.menuItemDetails}>{item.category} • ₹{item.price}</Text>
                     </View>
                     <TouchableOpacity
                       style={styles.deleteButtonSmall}
-                      onPress={() => handleDeleteCommonItem(item._id)}
+                      onPress={() => handleDeleteMenuItem(hotel._id, item._id)}
                     >
                       <Text style={styles.deleteButtonTextSmall}>Delete</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
-            </>
-          )}
-        </ScrollView>
-      </ImageBackground>
-      <Footer />
+            ))}
+          </>
+        )}
+
+        {activeTab === "users" && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>All Users</Text>
+            {users.map((user) => (
+              <View key={user._id} style={styles.userItem}>
+                <View>
+                  <Text style={styles.userName}>{user.firstName} {user.secondName}</Text>
+                  <Text style={styles.userEmail}>{user.email}</Text>
+                </View>
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleText}>{user.role}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {activeTab === "common" && (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Create Common Item</Text>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Item Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter item name"
+                  placeholderTextColor="#9CA3AF"
+                  value={commonForm.name}
+                  onChangeText={(text) => setCommonForm({ ...commonForm, name: text })}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Category</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter category"
+                  placeholderTextColor="#9CA3AF"
+                  value={commonForm.category}
+                  onChangeText={(text) => setCommonForm({ ...commonForm, category: text })}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Food Type</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={commonForm.foodType}
+                    onValueChange={(value) => setCommonForm({ ...commonForm, foodType: value })}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Veg" value="veg" />
+                    <Picker.Item label="Non-Veg" value="nonveg" />
+                  </Picker>
+                </View>
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Thali Eligible</Text>
+                <Switch
+                  value={commonForm.thaliEligible}
+                  onValueChange={(value) => setCommonForm({ ...commonForm, thaliEligible: value })}
+                  trackColor={{ false: "#D1D5DB", true: "#FCA5A5" }}
+                  thumbColor={commonForm.thaliEligible ? "#EF4444" : "#F3F4F6"}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Photo</Text>
+                {commonForm.photo && <Image source={{ uri: commonForm.photo.uri }} style={styles.preview} />}
+                <TouchableOpacity style={styles.photoButton} onPress={selectPhotoForCommon}>
+                  <Text style={styles.photoButtonText}>Choose Photo</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.submitButton} onPress={handleCreateCommonItem} disabled={submitting}>
+                <Text style={styles.submitButtonText}>{submitting ? "Creating..." : "Create"}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Common Items</Text>
+              {commonMenuItems.map((item) => (
+                <View key={item._id} style={styles.commonItem}>
+                  {item.photo && <Image source={{ uri: item.photo }} style={styles.commonItemImage} />}
+                  <View style={styles.commonItemInfo}>
+                    <Text style={styles.commonItemName}>{item.name}</Text>
+                    <Text style={styles.menuItemDetails}>{item.category} • {item.foodType}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteButtonSmall}
+                    onPress={() => handleDeleteCommonItem(item._id)}
+                  >
+                    <Text style={styles.deleteButtonTextSmall}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {commonMenuItems.length === 0 && (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No common items</Text>
+                </View>
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF" },
-  background: { flex: 1 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  tabContainer: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.95)" },
-  tab: { flex: 1, paddingVertical: 14, alignItems: "center" },
-  tabActive: { borderBottomWidth: 3, borderBottomColor: "#E23744" },
-  tabText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
-  tabTextActive: { color: "#E23744" },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 24 },
-  card: { backgroundColor: "rgba(255,255,255,0.95)", borderRadius: 16, padding: 20, marginBottom: 16 },
-  cardTitle: { fontSize: 20, fontWeight: "700", color: "#111", marginBottom: 16 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  cardHeaderLeft: { flex: 1 },
-  hotelSection: { marginBottom: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
-  hotelName: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
-  hotelInfo: { fontSize: 14, color: "#6B7280", marginBottom: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: 12, marginBottom: 12 },
-  menuItem: { flexDirection: "row", backgroundColor: "#F9FAFB", borderRadius: 12, padding: 12, marginBottom: 12, alignItems: "center" },
-  menuItemImage: { width: 70, height: 70, borderRadius: 8, marginRight: 12 },
-  menuItemInfo: { flex: 1 },
-  menuItemName: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
-  menuItemDetails: { fontSize: 14, color: "#6B7280" },
-  addPhotoButton: { backgroundColor: "#E23744", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
-  addPhotoButtonText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
-  deleteButton: { backgroundColor: "#DC2626", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
-  deleteButtonText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
-  deleteButtonSmall: { backgroundColor: "#DC2626", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  deleteButtonTextSmall: { color: "#FFF", fontWeight: "700", fontSize: 12 },
-  userItem: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#F9FAFB", borderRadius: 12, padding: 16, marginBottom: 12 },
-  userName: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
-  userEmail: { fontSize: 14, color: "#6B7280" },
-  roleBadge: { backgroundColor: "#E23744", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  roleText: { color: "#FFF", fontSize: 12, fontWeight: "700" },
-  input: { borderWidth: 2, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, marginBottom: 12 },
-  picker: { height: 50, marginBottom: 12 },
-  switchRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16, paddingVertical: 8 },
-  preview: { width: "100%", height: 200, borderRadius: 12, marginBottom: 12 },
-  photoButton: { borderWidth: 2, borderColor: "#E23744", borderRadius: 10, padding: 14, alignItems: "center", marginBottom: 16 },
-  photoButtonText: { color: "#E23744", fontSize: 16, fontWeight: "700" },
-  submitButton: { backgroundColor: "#E23744", borderRadius: 10, padding: 16, alignItems: "center" },
-  submitButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  commonItem: { flexDirection: "row", alignItems: "center", backgroundColor: "#F9FAFB", borderRadius: 12, padding: 12, marginBottom: 12 },
-  commonItemImage: { width: 70, height: 70, borderRadius: 8, marginRight: 12 },
-  commonItemInfo: { flex: 1 },
-  commonItemName: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
-  emptyText: { textAlign: "center", color: "#9CA3AF", fontSize: 16, paddingVertical: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    marginTop: 25,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoText: {
+    fontSize: 36,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 4,
+    letterSpacing: -0.25,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "400",
+  },
+  logoutButton: {
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  logoutText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#1E293B",
+    fontSize: 16,
+    marginTop: 12,
+    fontWeight: "500",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 4,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: "#EF4444",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#64748B",
+  },
+  tabTextActive: {
+    color: "#FFFFFF",
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+  },
+  hotelSection: {
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  hotelName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 12,
+  },
+  hotelInfo: {
+    fontSize: 14,
+    color: "#64748B",
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#1E293B",
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  menuItemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  menuItemInfo: {
+    flex: 1,
+  },
+  menuItemName: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1E293B",
+    marginBottom: 4,
+  },
+  menuItemDetails: {
+    fontSize: 13,
+    color: "#64748B",
+  },
+  addPhotoButton: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  addPhotoButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  deleteButton: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  deleteButtonSmall: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  deleteButtonTextSmall: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  userItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1E293B",
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 13,
+    color: "#64748B",
+  },
+  roleBadge: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  roleText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#475569",
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 16,
+    color: "#1E293B",
+  },
+  pickerContainer: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  picker: {
+    height: 44,
+    color: "#1E293B",
+  },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  switchLabel: {
+    fontSize: 14,
+    color: "#475569",
+    fontWeight: "500",
+  },
+  preview: {
+    width: "100%",
+    height: 160,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  photoButton: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#EF4444",
+    borderRadius: 10,
+    padding: 14,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  photoButtonText: {
+    color: "#EF4444",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  submitButton: {
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    padding: 16,
+    alignItems: "center",
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  submitButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  commonItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  commonItemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  commonItemInfo: {
+    flex: 1,
+  },
+  commonItemName: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1E293B",
+    marginBottom: 4,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
+  emptyText: {
+    color: "#64748B",
+    fontSize: 14,
+  },
 });

@@ -7,13 +7,10 @@ import {
   Alert,
   TextInput,
   ScrollView,
-  ImageBackground,
   Switch,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { api } from "../services/api";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
 
 export default function OrderConfirmation() {
   const route = useRoute();
@@ -100,40 +97,44 @@ export default function OrderConfirmation() {
 
   return (
     <View style={styles.container}>
-      <Header title="Order Confirmation" />
-      <ImageBackground
-        source={{
-          uri: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80",
-        }}
-        style={styles.background}
-        blurRadius={3}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          {/* Order Summary Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Order Summary</Text>
-            <View style={styles.divider} />
-            {items.map((item, index) => (
-              <View key={index} style={styles.itemRow}>
-                <View style={styles.itemDetails}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
-                </View>
-                <Text style={styles.itemPrice}>₹{item.quantity * item.price}</Text>
-              </View>
-            ))}
-            <View style={styles.divider} />
-            <View style={styles.totalRow}>
-              <Text style={styles.subtotalText}>Subtotal</Text>
-              <Text style={styles.subtotalPrice}>₹{subtotal}</Text>
-            </View>
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>🍽️</Text>
           </View>
+          <Text style={styles.title}>Order Confirmation</Text>
+          <Text style={styles.subtitle}>Review your order</Text>
+        </View>
 
-          {/* Delivery Details Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Delivery Details</Text>
-            <View style={styles.divider} />
-            
+        {/* Order Summary Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Order Summary</Text>
+          <View style={styles.divider} />
+          {items.map((item, index) => (
+            <View key={index} style={styles.itemRow}>
+              <View style={styles.itemDetails}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+              </View>
+              <Text style={styles.itemPrice}>₹{item.quantity * item.price}</Text>
+            </View>
+          ))}
+          <View style={styles.divider} />
+          <View style={styles.totalRow}>
+            <Text style={styles.subtotalText}>Subtotal</Text>
+            <Text style={styles.subtotalPrice}>₹{subtotal}</Text>
+          </View>
+        </View>
+
+        {/* Delivery Details Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Delivery Details</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Delivery Address</Text>
             <TextInput
               style={styles.input}
@@ -142,8 +143,11 @@ export default function OrderConfirmation() {
               value={deliveryLocation}
               onChangeText={setDeliveryLocation}
               multiline
+              numberOfLines={3}
             />
+          </View>
 
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Your Location (Coordinates)</Text>
             <View style={styles.coordinateRow}>
               <TextInput
@@ -163,92 +167,94 @@ export default function OrderConfirmation() {
                 keyboardType="numeric"
               />
             </View>
-
-            <TouchableOpacity style={styles.calculateButton} onPress={calculateDistance}>
-              <Text style={styles.calculateButtonText}>Calculate Delivery Charges</Text>
-            </TouchableOpacity>
-
-            {isCalculated && (
-              <View style={styles.deliveryInfo}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Distance from Sagar</Text>
-                  <Text style={styles.infoValue}>{distance} km</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Delivery Charge (₹20/km)</Text>
-                  <Text style={styles.infoValue}>₹{deliveryCharge}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Estimated Time</Text>
-                  <Text style={styles.infoValue}>{estimatedTime} min</Text>
-                </View>
-              </View>
-            )}
           </View>
 
-          {/* Catering Service Card */}
-          <View style={styles.card}>
-            <View style={styles.cateringHeader}>
-              <View>
-                <Text style={styles.cardTitle}>Catering Service</Text>
-                <Text style={styles.cateringSubtext}>Professional service for your event</Text>
-              </View>
-              <Switch
-                value={wantsCatering}
-                onValueChange={setWantsCatering}
-                trackColor={{ false: "#D1D5DB", true: "#FCA5A5" }}
-                thumbColor={wantsCatering ? "#E23744" : "#F3F4F6"}
-              />
-            </View>
-            {wantsCatering && (
-              <View style={styles.cateringInfo}>
-                <Text style={styles.cateringPrice}>+ ₹1,500</Text>
-                <Text style={styles.cateringDetails}>
-                  Includes serving staff, utensils, and table setup
-                </Text>
-              </View>
-            )}
-          </View>
+          <TouchableOpacity style={styles.calculateButton} onPress={calculateDistance}>
+            <Text style={styles.calculateButtonText}>Calculate Delivery Charges</Text>
+          </TouchableOpacity>
 
-          {/* Final Total Card */}
           {isCalculated && (
-            <View style={[styles.card, styles.totalCard]}>
-              <View style={styles.finalTotalRow}>
-                <Text style={styles.finalTotalLabel}>Total Amount</Text>
-                <Text style={styles.finalTotalPrice}>₹{finalTotal}</Text>
+            <View style={styles.deliveryInfo}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Distance from Sagar</Text>
+                <Text style={styles.infoValue}>{distance} km</Text>
               </View>
-              <View style={styles.breakdownContainer}>
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownText}>Food Items</Text>
-                  <Text style={styles.breakdownText}>₹{subtotal}</Text>
-                </View>
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownText}>Delivery</Text>
-                  <Text style={styles.breakdownText}>₹{deliveryCharge}</Text>
-                </View>
-                {wantsCatering && (
-                  <View style={styles.breakdownRow}>
-                    <Text style={styles.breakdownText}>Catering</Text>
-                    <Text style={styles.breakdownText}>₹{cateringCharge}</Text>
-                  </View>
-                )}
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Delivery Charge (₹20/km)</Text>
+                <Text style={styles.infoValue}>₹{deliveryCharge}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Estimated Time</Text>
+                <Text style={styles.infoValue}>{estimatedTime} min</Text>
               </View>
             </View>
           )}
+        </View>
 
-          {/* Confirm Button */}
-          <TouchableOpacity
-            style={[styles.confirmButton, !isCalculated && styles.confirmButtonDisabled]}
-            onPress={handleConfirmOrder}
-            disabled={!isCalculated}
-          >
-            <Text style={styles.confirmButtonText}>
-              {isCalculated ? "Confirm Order" : "Calculate Charges First"}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </ImageBackground>
-      <Footer />
+        {/* Catering Service Card */}
+        <View style={styles.card}>
+          <View style={styles.cateringHeader}>
+            <View>
+              <Text style={styles.cardTitle}>Catering Service</Text>
+              <Text style={styles.cateringSubtext}>Professional service for your event</Text>
+            </View>
+            <Switch
+              value={wantsCatering}
+              onValueChange={setWantsCatering}
+              trackColor={{ false: "#D1D5DB", true: "#FCA5A5" }}
+              thumbColor={wantsCatering ? "#EF4444" : "#F3F4F6"}
+            />
+          </View>
+          {wantsCatering && (
+            <View style={styles.cateringInfo}>
+              <Text style={styles.cateringPrice}>+ ₹1,500</Text>
+              <Text style={styles.cateringDetails}>
+                Includes serving staff, utensils, and table setup
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Final Total Card */}
+        {isCalculated && (
+          <View style={[styles.card, styles.totalCard]}>
+            <View style={styles.finalTotalRow}>
+              <Text style={styles.finalTotalLabel}>Total Amount</Text>
+              <Text style={styles.finalTotalPrice}>₹{finalTotal}</Text>
+            </View>
+            <View style={styles.breakdownContainer}>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownText}>Food Items</Text>
+                <Text style={styles.breakdownText}>₹{subtotal}</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownText}>Delivery</Text>
+                <Text style={styles.breakdownText}>₹{deliveryCharge}</Text>
+              </View>
+              {wantsCatering && (
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownText}>Catering</Text>
+                  <Text style={styles.breakdownText}>₹{cateringCharge}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Confirm Button */}
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            (!isCalculated || !deliveryLocation.trim()) && styles.confirmButtonDisabled
+          ]}
+          onPress={handleConfirmOrder}
+          disabled={!isCalculated || !deliveryLocation.trim()}
+        >
+          <Text style={styles.confirmButtonText}>
+            {isCalculated ? "Confirm Order" : "Calculate Charges First"}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
@@ -256,38 +262,62 @@ export default function OrderConfirmation() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  background: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: "#F8FAFC",
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 24,
+    flexGrow: 1,
+    padding: 20,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  logoText: {
+    fontSize: 36,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 4,
+    letterSpacing: -0.25,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "400",
   },
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   cardTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#E2E8F0",
     marginVertical: 12,
   },
   itemRow: {
@@ -295,7 +325,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F1F5F9",
     padding: 12,
     borderRadius: 8,
   },
@@ -304,18 +334,18 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#374151",
+    fontWeight: "500",
+    color: "#475569",
   },
   itemQuantity: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "#64748B",
     marginTop: 2,
   },
   itemPrice: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#E23744",
+    fontWeight: "600",
+    color: "#EF4444",
   },
   totalRow: {
     flexDirection: "row",
@@ -324,31 +354,32 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   subtotalText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#374151",
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#475569",
   },
   subtotalPrice: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "600",
+    color: "#1E293B",
+  },
+  inputGroup: {
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
-    marginTop: 8,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#475569",
+    marginBottom: 6,
   },
   input: {
     backgroundColor: "#FFFFFF",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     borderRadius: 10,
-    padding: 12,
+    padding: 14,
     fontSize: 16,
-    color: "#111827",
-    marginBottom: 12,
+    color: "#1E293B",
   },
   coordinateRow: {
     flexDirection: "row",
@@ -359,25 +390,25 @@ const styles = StyleSheet.create({
   },
   calculateButton: {
     backgroundColor: "#FFFFFF",
-    borderWidth: 2,
-    borderColor: "#E23744",
+    borderWidth: 1,
+    borderColor: "#EF4444",
     borderRadius: 10,
     padding: 14,
     alignItems: "center",
     marginTop: 8,
   },
   calculateButtonText: {
-    color: "#E23744",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#EF4444",
+    fontSize: 15,
+    fontWeight: "500",
   },
   deliveryInfo: {
     backgroundColor: "#FEF2F2",
     borderRadius: 10,
-    padding: 16,
-    marginTop: 16,
+    padding: 12,
+    marginTop: 12,
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: "#FECACA",
   },
   infoRow: {
     flexDirection: "row",
@@ -386,68 +417,68 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoLabel: {
-    fontSize: 15,
-    color: "#374151",
+    fontSize: 14,
+    color: "#475569",
     fontWeight: "500",
   },
   infoValue: {
-    fontSize: 16,
-    color: "#E23744",
-    fontWeight: "700",
+    fontSize: 15,
+    color: "#EF4444",
+    fontWeight: "600",
   },
   cateringHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 12,
   },
   cateringSubtext: {
-    fontSize: 13,
-    color: "#6B7280",
+    fontSize: 12,
+    color: "#64748B",
     marginTop: 4,
   },
   cateringInfo: {
     backgroundColor: "#FEF2F2",
     borderRadius: 10,
-    padding: 16,
+    padding: 12,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: "#FECACA",
   },
   cateringPrice: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#E23744",
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#EF4444",
     marginBottom: 4,
   },
   cateringDetails: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: 13,
+    color: "#64748B",
   },
   totalCard: {
-    backgroundColor: "rgba(226, 55, 68, 0.05)",
-    borderWidth: 2,
-    borderColor: "#E23744",
+    backgroundColor: "#FEF2F2",
+    borderColor: "#EF4444",
   },
   finalTotalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 12,
   },
   finalTotalLabel: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#1E293B",
   },
   finalTotalPrice: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#E23744",
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#EF4444",
   },
   breakdownContainer: {
-    marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#FEE2E2",
+    borderTopColor: "#FECACA",
   },
   breakdownRow: {
     flexDirection: "row",
@@ -456,28 +487,27 @@ const styles = StyleSheet.create({
   },
   breakdownText: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "#64748B",
   },
   confirmButton: {
-    backgroundColor: "#E23744",
-    borderRadius: 12,
-    padding: 18,
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    padding: 16,
     alignItems: "center",
-    shadowColor: "#E23744",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
     marginTop: 8,
-    marginBottom: 8,
+    marginBottom: 40,
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   confirmButtonDisabled: {
-    backgroundColor: "#9CA3AF",
-    shadowOpacity: 0,
+    backgroundColor: "#F3F4F6",
   },
   confirmButtonText: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

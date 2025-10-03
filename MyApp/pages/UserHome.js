@@ -9,12 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  ImageBackground,
+  ScrollView,
 } from "react-native";
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
 
 export default function UserHome({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -22,10 +20,58 @@ export default function UserHome({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [commonMenuItems, setCommonMenuItems] = useState([]);
+  const [selectedCommonItem, setSelectedCommonItem] = useState(null);
 
   useEffect(() => {
+    fetchCommonMenuItems();
     fetchHotels();
   }, [filter, searchQuery]);
+
+  useEffect(() => {
+    if (selectedCommonItem) {
+      fetchHotelsByCommonItem(selectedCommonItem._id);
+    } else {
+      fetchHotels();
+    }
+  }, [selectedCommonItem]);
+
+  const fetchCommonMenuItems = async () => {
+    try {
+      const res = await api.get("/common-menu");
+      let items = Array.isArray(res.data) ? res.data : res.data.commonMenuItems || [];
+      // Fix photo URLs to be absolute
+      items = items.map(item => ({
+        ...item,
+        photo: item.photo && item.photo.startsWith("/uploads/")
+          ? `${api.defaults.baseURL.replace('/api','')}${item.photo}`
+          : item.photo
+      }));
+      console.log("Fetched common menu items:", items);
+      setCommonMenuItems(items);
+    } catch (error) {
+      console.log("Error fetching common menu items:", error);
+      setCommonMenuItems([]);
+    }
+  };
+
+  const fetchHotelsByCommonItem = async (commonItemId) => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/hotels/by-common-item/${commonItemId}`);
+      let fetchedHotels = Array.isArray(res.data) ? res.data : res.data.hotels || [];
+      if (searchQuery) {
+        fetchedHotels = fetchedHotels.filter((hotel) =>
+          hotel.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+      setHotels(fetchedHotels);
+    } catch (error) {
+      setHotels([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchHotels = async () => {
     setLoading(true);
@@ -54,6 +100,17 @@ export default function UserHome({ navigation }) {
 
   const handleFilterChange = (type) => {
     setFilter(type);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Logout", style: "destructive", onPress: logout }
+      ]
+    );
   };
 
   const renderHotel = ({ item }) => (
@@ -88,46 +145,69 @@ export default function UserHome({ navigation }) {
             )}
           </View>
         )}
-        <View style={styles.viewMenuButton}>
+        <TouchableOpacity style={styles.viewMenuButton}>
           <Text style={styles.viewMenuText}>View Menu →</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 
+  // Grid rendering for hotels (2 per row)
+  const renderHotelGrid = () => {
+    const rows = [];
+    for (let i = 0; i < hotels.length; i += 2) {
+      rows.push(
+        <View style={styles.hotelRow} key={i}>
+          <View style={{ flex: 1, marginRight: 8 }}>{renderHotel({ item: hotels[i] })}</View>
+          {hotels[i + 1] && <View style={{ flex: 1, marginLeft: 8 }}>{renderHotel({ item: hotels[i + 1] })}</View>}
+        </View>
+      );
+    }
+    return rows;
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title="Loading..." showLogout={true} onLogout={logout} />
-        <ImageBackground
-          source={{
-            uri: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1920&q=80",
-          }}
-          style={styles.background}
-          blurRadius={5}
-        >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText}>🍽️</Text>
+            </View>
+            <View style={styles.centerContent}>
+              <Text style={styles.title}>Restaurants</Text>
+              <Text style={styles.subtitle}>Discover great places to eat</Text>
+            </View>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#E23744" />
+            <ActivityIndicator size="large" color="#EF4444" />
             <Text style={styles.loadingText}>Loading restaurants...</Text>
           </View>
-        </ImageBackground>
-        <Footer />
+        </ScrollView>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header title="Restaurants" showLogout={true} onLogout={logout} />
-      <ImageBackground
-        source={{
-          uri: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1920&q=80",
-        }}
-        style={styles.background}
-        blurRadius={3}
-      >
-        {/* Filter Section */}
-        <View style={styles.filterSection}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>🍽️</Text>
+          </View>
+          <View style={styles.centerContent}>
+            <Text style={styles.title}>Restaurants</Text>
+            <Text style={styles.subtitle}>Discover great places to eat</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchSection}>
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchInput}
@@ -137,52 +217,84 @@ export default function UserHome({ navigation }) {
               onChangeText={setSearchQuery}
             />
           </View>
-          <View style={styles.filterButtons}>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === "all" && styles.filterButtonActive]}
-              onPress={() => handleFilterChange("all")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterButtonText, filter === "all" && styles.filterButtonTextActive]}>
-                All Restaurants
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === "veg" && styles.filterButtonActive]}
-              onPress={() => handleFilterChange("veg")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterButtonText, filter === "veg" && styles.filterButtonTextActive]}>
-                🟢 Pure Veg
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === "nonveg" && styles.filterButtonActive]}
-              onPress={() => handleFilterChange("nonveg")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterButtonText, filter === "nonveg" && styles.filterButtonTextActive]}>
-                🔴 Non-Veg
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
-        <FlatList
-          data={hotels}
-          keyExtractor={(item) => item._id}
-          renderItem={renderHotel}
-          ListEmptyComponent={
+        {/* Common Menu Items Horizontal Scroll */}
+        <View style={styles.commonMenuSection}>
+          <Text style={styles.sectionTitle}>Popular Foods</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.commonMenuScroll}>
+            {commonMenuItems.map((item) => (
+              <TouchableOpacity
+                key={item._id}
+                style={[
+                  styles.commonMenuItem,
+                  selectedCommonItem?._id === item._id && styles.commonMenuItemActive
+                ]}
+                onPress={() => setSelectedCommonItem(selectedCommonItem?._id === item._id ? null : item)}
+                activeOpacity={0.8}
+              >
+                {item.photo && (
+                  <Image source={{ uri: item.photo }} style={styles.commonMenuImage} />
+                )}
+                <Text style={styles.commonMenuName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.commonMenuCategory} numberOfLines={1}>{item.category}</Text>
+                <Text style={styles.commonMenuType}>{item.foodType === "veg" ? "🟢 Veg" : "🔴 Non-Veg"}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Filter Buttons - Hide when a common menu item is selected */}
+        {!selectedCommonItem && (
+          <View style={styles.filterButtonsSection}>
+            <View style={styles.filterButtons}>
+              <TouchableOpacity
+                style={[styles.filterButton, filter === "all" && styles.filterButtonActive]}
+                onPress={() => handleFilterChange("all")}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterButtonText, filter === "all" && styles.filterButtonTextActive]}>
+                  All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, filter === "veg" && styles.filterButtonActive]}
+                onPress={() => handleFilterChange("veg")}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterButtonText, filter === "veg" && styles.filterButtonTextActive]}>
+                  🟢 Veg
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, filter === "nonveg" && styles.filterButtonActive]}
+                onPress={() => handleFilterChange("nonveg")}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterButtonText, filter === "nonveg" && styles.filterButtonTextActive]}>
+                  🔴 Non-Veg
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Hotels Grid */}
+        <View style={styles.listContent}>
+          {hotels.length > 0 ? (
+            renderHotelGrid()
+          ) : selectedCommonItem ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No hotels found for this food</Text>
+            </View>
+          ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No restaurants found</Text>
               <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
             </View>
-          }
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      </ImageBackground>
-      <Footer />
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -190,10 +302,57 @@ export default function UserHome({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8FAFC",
+    marginTop: 25,
   },
-  background: {
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoText: {
+    fontSize: 36,
+  },
+  centerContent: {
     flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 4,
+    letterSpacing: -0.25,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "400",
+  },
+  logoutButton: {
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  logoutText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "500",
   },
   center: {
     flex: 1,
@@ -201,32 +360,96 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    color: "#FFFFFF",
-    fontSize: 18,
+    color: "#1E293B",
+    fontSize: 16,
     marginTop: 12,
-    fontWeight: "600",
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    fontWeight: "500",
   },
-  filterSection: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+  searchSection: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchContainer: {
-    marginBottom: 12,
+    marginBottom: 0,
   },
   searchInput: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
     padding: 14,
-    borderRadius: 12,
-    color: "#111827",
     fontSize: 16,
+    color: "#1E293B",
+  },
+  commonMenuSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 12,
+  },
+  commonMenuScroll: {
+    paddingBottom: 8,
+  },
+  commonMenuItem: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    width: 100,
+    marginRight: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  commonMenuItemActive: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+  },
+  commonMenuImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    marginBottom: 8,
+    resizeMode: "cover",
+  },
+  commonMenuName: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#1E293B",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  commonMenuCategory: {
+    fontSize: 10,
+    color: "#64748B",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  commonMenuType: {
+    fontSize: 10,
+    color: "#EF4444",
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  filterButtonsSection: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -239,70 +462,71 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 12,
+    backgroundColor: "#F1F5F9",
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   filterButtonActive: {
-    backgroundColor: "#E23744",
-    borderColor: "#E23744",
+    backgroundColor: "#EF4444",
+    borderColor: "#EF4444",
   },
   filterButtonText: {
-    color: "#374151",
-    fontWeight: "700",
     fontSize: 14,
+    fontWeight: "500",
+    color: "#64748B",
   },
   filterButtonTextActive: {
     color: "#FFFFFF",
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 40,
   },
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 16,
-    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     overflow: "hidden",
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   hotelImage: {
     width: "100%",
-    height: 200,
+    height: 160,
     resizeMode: "cover",
   },
   placeholderPhoto: {
     width: "100%",
-    height: 200,
-    backgroundColor: "#E5E7EB",
+    height: 160,
+    backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
   },
   placeholderText: {
     color: "#9CA3AF",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "500",
   },
   cardContent: {
-    padding: 16,
+    padding: 12,
   },
   hotelName: {
-    color: "#111827",
-    fontWeight: "700",
-    fontSize: 20,
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 4,
   },
   hotelAddress: {
-    color: "#6B7280",
     fontSize: 14,
-    marginBottom: 12,
+    color: "#64748B",
+    marginBottom: 8,
     lineHeight: 20,
   },
   optionsContainer: {
@@ -312,57 +536,64 @@ const styles = StyleSheet.create({
   },
   vegBadge: {
     backgroundColor: "#ECFDF5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#10B981",
   },
   vegText: {
     color: "#047857",
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "500",
   },
   nonVegBadge: {
     backgroundColor: "#FEF2F2",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E23744",
+    borderColor: "#EF4444",
   },
   nonVegText: {
-    color: "#E23744",
-    fontSize: 12,
-    fontWeight: "600",
+    color: "#EF4444",
+    fontSize: 11,
+    fontWeight: "500",
   },
   viewMenuButton: {
-    backgroundColor: "#E23744",
-    paddingVertical: 10,
+    backgroundColor: "#EF4444",
     borderRadius: 8,
+    paddingVertical: 8,
     alignItems: "center",
   },
   viewMenuText: {
     color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 15,
+    fontSize: 13,
+    fontWeight: "500",
   },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 16,
+    paddingVertical: 40,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   emptyText: {
-    color: "#374151",
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1E293B",
+    marginBottom: 4,
   },
   emptySubtext: {
-    color: "#9CA3AF",
     fontSize: 14,
+    color: "#64748B",
+  },
+  hotelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
 });

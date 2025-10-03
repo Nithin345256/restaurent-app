@@ -23,6 +23,7 @@ import {
   calculateTotal,
   getCommonMenuItems,
   addCommonItemToMenu,
+  getHotelsByCommonItem,
 } from '../controllers/HotelController.js';
 import {
   getAllUsers,
@@ -67,6 +68,7 @@ router.put('/auth/change-password', authMiddleware, changePassword);
 
 // ==================== HOTEL ROUTES (PUBLIC) ====================
 router.get('/hotels', getHotels); // Get all hotels
+router.get('/hotels/by-common-item/:commonItemId', getHotelsByCommonItem); // Get hotels by common menu item
 router.get('/hotels/type', getHotelByType); // Get hotels by type (veg/nonveg/all)
 router.get('/hotels/:id', getHotelById); // Get single hotel with full menu
 
@@ -78,58 +80,12 @@ router.delete('/hotels/:id', authMiddleware, deleteHotel); // Delete hotel
 
 // ==================== MENU ROUTES ====================
 router.post('/hotels/:id/menu', authMiddleware, hotelMiddleware, addMenuItem); // Add menu item (without photo)
-router.post('/hotels/add-menu-item', authMiddleware, hotelMiddleware, upload.none(), async (req, res, next) => {
-  try {
-    // Debug: log incoming request body and params
-    console.log('[add-menu-item] req.body:', req.body);
-    console.log('[add-menu-item] req.params:', req.params);
-    // Try to get hotelId from body, params, or authenticated user
-    let hotelId = req.body.hotelId || req.body.hotelid || req.params.hotelId || req.params.hotelid;
-    if (!hotelId && req.body.id) hotelId = req.body.id;
-    if (!hotelId && req.user && req.user.userId) hotelId = req.user.userId.toString();
-    // Accept all menu fields from body
-    const menuData = { ...req.body };
-    // Support both foodType and foodtype (case-insensitive)
-    const foodType = menuData.foodType || menuData.foodtype;
-    const name = menuData.name && menuData.name.trim();
-    const category = menuData.category && menuData.category.trim();
-    let price = menuData.price;
-    if (typeof price === 'string') price = price.trim();
-    // Validate required fields
-    if (!hotelId || !name || !category || !foodType || !price) {
-      return res.status(400).json({ error: 'hotelId, name, category, foodType, and price are required', debug: { hotelId, name, category, foodType, price, menuData } });
-    }
-    // Validate price is numeric
-    if (isNaN(Number(price))) {
-      return res.status(400).json({ error: 'Price must be a number', debug: { price } });
-    }
-    // Authorization: only hotel owner or admin can add menu items
-    // If hotelMiddleware sets req.hotel, use its _id for owner check
-    let ownerHotelId = hotelId;
-    if (req.hotel && req.hotel._id) {
-      ownerHotelId = req.hotel._id.toString();
-    } else if (req.user && req.user.userId) {
-      // Fallback: fetch hotel for user
-      const userHotel = await Hotel.findOne({ owner: req.user.userId });
-      if (userHotel && userHotel._id) ownerHotelId = userHotel._id.toString();
-    }
-    const isHotelOwner = req.user && req.user.userId && ownerHotelId && req.user.userId.toString() === ownerHotelId;
-    const isAdmin = req.user && req.user.role === 'admin';
-    if (!isHotelOwner && !isAdmin) {
-      return res.status(403).json({ error: 'Unauthorized: only the hotel owner or admin can add menu items', debug: { userId: req.user.userId, ownerHotelId, role: req.user.role } });
-    }
-    req.params.id = hotelId;
-    req.body = { ...menuData, name, category, foodType, price: Number(price) };
-    return await addMenuItem(req, res, next);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/hotels/add-menu-item', authMiddleware, hotelMiddleware, addMenuItem);
 router.put('/hotels/:id/menu/:menuId', authMiddleware, hotelMiddleware, updateMenuItem); // Update menu item
 router.delete('/hotels/:id/menu/:menuId', authMiddleware, deleteMenuItem); // Delete menu item
 
 // ==================== COMMON MENU ROUTES ====================
-router.get('/common-menu', authMiddleware, getCommonMenuItems); // Get all common menu items
+router.get('/common-menu', getCommonMenuItems); // Get all common menu items
 router.post('/hotels/add-common-item/:commonItemId', authMiddleware, hotelMiddleware, addCommonItemToMenu); // Add common item to hotel menu
 
 // ==================== CALCULATE TOTAL ====================

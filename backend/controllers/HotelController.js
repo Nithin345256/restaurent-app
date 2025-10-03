@@ -1,3 +1,28 @@
+// Get hotels that have a specific common menu item
+export const getHotelsByCommonItem = async (req, res) => {
+  const { commonItemId } = req.params;
+  try {
+    // Find the common menu item
+    const commonItem = await CommonMenuItem.findById(commonItemId);
+    if (!commonItem) {
+      return res.status(404).json({ message: "Common menu item not found" });
+    }
+    // Find hotels whose menu contains this item (by name, category, foodType)
+    const hotels = await Hotel.find({
+      menu: {
+        $elemMatch: {
+          name: commonItem.name,
+          category: commonItem.category,
+          foodType: commonItem.foodType,
+        }
+      }
+    });
+    res.status(200).json(hotels);
+  } catch (error) {
+    console.error("Get hotels by common item error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 import Hotel from "../models/Hotel.js";
 import CommonMenuItem from "../models/commonMenu.js";
 import { uploadFile } from "../utils/fileUpload.js";
@@ -200,13 +225,39 @@ export const getHotelById = async (req, res) => {
 };
 
 // Add menu item to hotel (without photo - admin will add later)
+// Add menu item to hotel (without photo - admin will add later)
 export const addMenuItem = async (req, res) => {
-  const { name, category, foodType, price, thaliEligible, type, items } = req.body;
+  console.log('[addMenuItem] Full request body:', JSON.stringify(req.body, null, 2));
+  
+  const { name, category, foodType, price, thaliEligible, type, items, mealType, thaliOptions } = req.body;
   const userId = req.user.userId;
 
-  if (!name || !category || !foodType || typeof price !== "number") {
+  // Validate required fields
+  if (!name || !foodType || typeof price !== "number") {
     return res.status(400).json({ 
-      message: "Name, category, foodType, and numeric price are required" 
+      message: "Name, foodType, and numeric price are required" 
+    });
+  }
+
+  // Validate mealType is provided
+  if (!mealType) {
+    console.error('[addMenuItem] mealType is missing from request');
+    return res.status(400).json({ 
+      message: "mealType is required (breakfast, lunch, or dinner)" 
+    });
+  }
+
+  // Validate mealType enum
+  if (!["breakfast", "lunch", "dinner"].includes(mealType)) {
+    return res.status(400).json({ 
+      message: "mealType must be 'breakfast', 'lunch', or 'dinner'" 
+    });
+  }
+
+  // Category required for lunch/dinner
+  if ((mealType === 'lunch' || mealType === 'dinner') && !category) {
+    return res.status(400).json({ 
+      message: "Category is required for lunch/dinner items" 
     });
   }
 
@@ -228,28 +279,53 @@ export const addMenuItem = async (req, res) => {
       });
     }
 
+    // Create menu item object - CRITICAL: Set category based on mealType
     const menuItem = {
       name,
-      category,
+      category: (mealType === 'breakfast') ? 'breakfast' : (category || ''),
       foodType,
       price,
       thaliEligible: !!thaliEligible,
       type: type || "single",
       items: items || [],
+      mealType,  // Explicitly set mealType
+      thaliOptions: thaliOptions || null,
       photo: null,
       photoApproved: false,
     };
 
+    console.log('[addMenuItem] Creating menu item:', JSON.stringify(menuItem, null, 2));
+
+    // Push to menu array
     hotel.menu.push(menuItem);
-    await hotel.save();
-    // Debug: print menu items and photoApproved status
-    console.log('Hotel menu after addition:', hotel.menu.map(item => ({ name: item.name, photoApproved: item.photoApproved })));
+    // Save with explicit validation
+    await hotel.save({ validateBeforeSave: true });
+    // Fetch updated hotel document
+    const updatedHotel = await Hotel.findById(hotel._id);
+    console.log('[addMenuItem] Menu item added successfully');
+    console.log('[addMenuItem] Updated hotel menu:', JSON.stringify(updatedHotel.menu, null, 2));
     res.status(201).json({ 
       message: "Menu item added. Waiting for admin to approve photo.", 
-      hotel 
+      hotel: updatedHotel
     });
   } catch (error) {
-    console.error("Add menu item error:", error);
+    console.error("[addMenuItem] Error:", error);
+    console.error("[addMenuItem] Error details:", {
+      message: error.message,
+      errors: error.errors,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // More helpful error message
+    if (error.name === 'ValidationError') {
+      const errorMessages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: "Validation failed", 
+        errors: errorMessages 
+      });
+    }
+    
     res.status(500).json({ 
       message: "Server error", 
       error: error.message 

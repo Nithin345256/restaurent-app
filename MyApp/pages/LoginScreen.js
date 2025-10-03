@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -28,18 +27,13 @@ export default function Login({ navigation }) {
       return;
     }
 
-    console.log(`Attempting login with email: ${trimmedEmail}, password: ${trimmedPassword}`);
+    console.log(`Attempting login with email: ${trimmedEmail}`);
     setLoading(true);
     try {
       const user = await login(trimmedEmail, trimmedPassword);
       Alert.alert("Success", "Login successful!");
-      // Navigation will be handled automatically by AppNavigator based on user.role
     } catch (error) {
-      console.error("Login error:", {
-        message: error.message,
-        config: error.config,
-        response: error.response?.data,
-      });
+      console.error("Login error:", error);
       Alert.alert(
         "Error",
         error.response?.data?.message || "Failed to connect to server. Please check your network.",
@@ -60,172 +54,196 @@ export default function Login({ navigation }) {
   };
 
   return (
-    <ImageBackground
-      source={{
-        uri: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80",
-      }}
-      style={styles.background}
-      blurRadius={2}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.card}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to continue (password is case-sensitive)</Text>
-            </View>
-
-            <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  placeholderTextColor="#9CA3AF"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password (case-sensitive)"
-                  placeholderTextColor="#9CA3AF"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-                onPress={handleLogin}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.loginButtonText}>Sign In</Text>
-                )}
-              </TouchableOpacity>
-
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Don't have an account?</Text>
-                <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-                  <Text style={styles.registerLink}>Sign Up</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>🍽️</Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ImageBackground>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#9CA3AF"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor="#9CA3AF"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <Text style={styles.hint}>Password is case-sensitive</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate("Register")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryButtonText}>Create New Account</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
   container: {
     flex: 1,
+    backgroundColor: "#F8FAFC",
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },
-  card: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 20,
-    padding: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
   header: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 32,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  logoText: {
+    fontSize: 36,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 4,
+    letterSpacing: -0.25,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#6B7280",
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "400",
   },
   form: {
     width: "100%",
   },
-  inputContainer: {
-    marginBottom: 20,
+  inputGroup: {
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#475569",
+    marginBottom: 6,
   },
   input: {
     backgroundColor: "#FFFFFF",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: "#111827",
+    color: "#1E293B",
   },
-  loginButton: {
-    backgroundColor: "#E23744",
-    borderRadius: 12,
+  hint: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginTop: 4,
+  },
+  button: {
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
     padding: 16,
     alignItems: "center",
-    marginTop: 10,
-    shadowColor: "#E23744",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 8,
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  loginButtonDisabled: {
+  buttonDisabled: {
     backgroundColor: "#FCA5A5",
+    opacity: 0.7,
   },
-  loginButtonText: {
+  buttonText: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "600",
   },
-  footer: {
+  divider: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    marginTop: 25,
-    gap: 8,
+    marginVertical: 24,
   },
-  footerText: {
-    color: "#6B7280",
-    fontSize: 15,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E2E8F0",
   },
-  registerLink: {
-    color: "#E23744",
+  dividerText: {
+    color: "#94A3B8",
+    fontSize: 13,
+    marginHorizontal: 12,
+    fontWeight: "500",
+  },
+  secondaryButton: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    padding: 16,
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    color: "#475569",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "500",
   },
 });

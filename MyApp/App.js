@@ -1,4 +1,5 @@
 import React, { useContext } from "react";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
@@ -99,9 +100,11 @@ function AppNavigator() {
 // Main App Component
 export default function App() {
   return (
-    <AuthProvider>
-      <AppNavigator />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 

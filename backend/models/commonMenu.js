@@ -27,6 +27,11 @@ const CommonMenuItemSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    mealType: {
+      type: String,
+      enum: ["breakfast", "lunch", "dinner"],
+      required: true,
+    },
     type: {
       type: String,
       enum: ["single", "thali"],
@@ -35,6 +40,11 @@ const CommonMenuItemSchema = new mongoose.Schema(
     items: {
       type: [String],
       default: [],
+    },
+    thaliOptions: {
+      type: Object,
+      default: null,
+      // Example: { starters: [String], riceItems: [String], juices: [String], others: [String] }
     },
     photo: {
       type: String,
