@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../services/api";
+import { resetToLogin } from "../navigation/RootNavigation";
 
 export const AuthContext = createContext();
 
@@ -8,9 +9,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Admin credentials - hardcoded
-  const ADMIN_EMAIL = "admin@restaurant.com";
-  const ADMIN_PASSWORD = "admin123";
+  // Admin credentials - hardcoded (keep in sync with backend/.env ADMIN_EMAIL / ADMIN_PASSWORD)
+  // NOTE: For local development the admin login is handled locally without a backend call.
+  const ADMIN_EMAIL = "admin@foodcatering.com";
+  const ADMIN_PASSWORD = "Admin@123";
 
   useEffect(() => {
     checkAuth();
@@ -20,6 +22,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const userData = await AsyncStorage.getItem("user");
+      // Ensure token looks like a JWT (three dot-separated parts)
+      const looksLikeJwt = typeof token === 'string' && token.split('.').length === 3;
+      if (!looksLikeJwt) {
+        await AsyncStorage.removeItem("token");
+        delete api.defaults.headers.common["Authorization"];
+        return;
+      }
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
@@ -35,35 +44,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Check if it's admin login
-      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        // Handle admin login locally (no backend call)
-        const adminUser = {
-          id: "admin",
-          email: ADMIN_EMAIL,
-          firstName: "Admin",
-          secondName: "User",
-          role: "admin",
-        };
-        const adminToken = "admin-token-" + Date.now();
-
-        // Save to AsyncStorage
-        await AsyncStorage.setItem("token", adminToken);
-        await AsyncStorage.setItem("user", JSON.stringify(adminUser));
-
-        // Set token in API headers
-        api.defaults.headers.common["Authorization"] = `Bearer ${adminToken}`;
-        setUser(adminUser);
-        
-        // Return the admin user object
-        return adminUser;
-      }
-
-      // Regular user/hotel login
+      // Always authenticate via backend (admin is handled server-side via .env creds)
       console.log('Attempting backend login for:', email);
       const response = await api.post("/auth/login", { email, password });
       console.log('Login response:', response.data);
-      
+
       const { token, user: userData } = response.data;
 
       if (!token || !userData) {
@@ -77,10 +62,10 @@ export const AuthProvider = ({ children }) => {
       // Set token in API headers
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       setUser(userData);
-      
+
       console.log('Login successful, user role:', userData.role);
-      
-      // Return the user object - CRITICAL!
+
+      // Return the user object
       return userData;
     } catch (error) {
       console.error("Login error:", error.response?.data || error.message);
@@ -129,6 +114,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Logout relies on AppNavigator's conditional rendering to show AuthStack.
+  const logoutAndNavigate = async () => {
+    await logout();
+    // No explicit navigation reset needed; AppNavigator will render AuthStack when user is null.
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -136,7 +127,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         register,
-        logout,
+        logout: logoutAndNavigate,
       }}
     >
       {children}

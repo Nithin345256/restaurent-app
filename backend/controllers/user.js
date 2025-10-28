@@ -81,6 +81,23 @@ export const register = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+  // Set cookies (JWT httpOnly + role)
+  const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
+  res.cookie('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+  res.cookie('role', newUser.role, {
+    httpOnly: false,
+    sameSite: 'lax',
+    secure: isProd,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+
     res.status(201).json({
       message: "User registered successfully",
       token,
@@ -133,7 +150,22 @@ export const login = async (req, res) => {
         process.env.JWT_SECRET || "your_jwt_secret_key",
         { expiresIn: "7d" }
       );
-      return res.status(200).json({
+    const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProd,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    res.cookie('role', 'admin', {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: isProd,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    return res.status(200).json({
         message: "Login successful",
         token,
         user: {
@@ -173,7 +205,24 @@ export const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.status(200).json({
+  // Set cookies
+  const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
+  res.cookie('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+  res.cookie('role', user.role, {
+    httpOnly: false,
+    sameSite: 'lax',
+    secure: isProd,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/',
+  });
+
+  res.status(200).json({
       message: "Login successful",
       token,
       user: {
@@ -191,6 +240,17 @@ export const login = async (req, res) => {
       message: "Server error",
       error: error.message,
     });
+  }
+};
+
+// Logout: clear cookies
+export const logout = async (req, res) => {
+  try {
+    res.clearCookie('token', { path: '/' });
+    res.clearCookie('role', { path: '/' });
+    return res.status(200).json({ message: 'Logged out' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to logout', error: error.message });
   }
 };
 

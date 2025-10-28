@@ -351,7 +351,7 @@ export const getCommonMenuItems = async (req, res) => {
 export const addCommonItemToMenu = async (req, res) => {
   const { commonItemId } = req.params;
   const { price } = req.body;
-  const userId = req.user.id;
+  const userId = req.user.userId || req.user.id;
 
   if (typeof price !== "number" || price <= 0) {
     return res.status(400).json({ 
@@ -390,6 +390,7 @@ export const addCommonItemToMenu = async (req, res) => {
       thaliEligible: commonItem.thaliEligible,
       type: commonItem.type,
       items: commonItem.items,
+      mealType: commonItem.mealType || 'breakfast', // Add required mealType field
       photo: commonItem.photo,
       photoApproved: true,
     };

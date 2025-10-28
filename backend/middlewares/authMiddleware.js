@@ -4,8 +4,17 @@ import User from "../models/users.js";
 // Authentication Middleware
 export const authMiddleware = async (req, res, next) => {
   try {
-  const token = req.headers.authorization?.split(" ")[1];
-  console.log("[authMiddleware] Incoming token:", req.headers.authorization);
+  let token = req.headers.authorization?.split(" ")[1];
+  if (!token && req.headers.cookie) {
+    // Fallback: read JWT from cookies
+    const cookieHeader = req.headers.cookie;
+    const parts = cookieHeader.split(';').map(s => s.trim());
+    const tokenPair = parts.find(p => p.startsWith('token='));
+    if (tokenPair) {
+      token = tokenPair.substring('token='.length);
+    }
+  }
+  console.log("[authMiddleware] Incoming token header:", req.headers.authorization, "cookie:", req.headers.cookie);
 
     if (!token) {
       return res.status(401).json({ 

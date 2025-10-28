@@ -1,8 +1,10 @@
 import React, { useContext } from "react";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from "@react-navigation/native";
+import { navigationRef } from './navigation/RootNavigation';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Text } from "react-native";
+import Logo from "./components/Logo";
 import { AuthContext, AuthProvider } from "./context/AuthContext";
 import Login from "./pages/LoginScreen";
 import Register from "./pages/RegisterScreen";
@@ -70,13 +72,15 @@ function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E23744" />
+        <Logo size={96} />
+        <Text style={styles.loadingTitle}>Ahaarika</Text>
+        <ActivityIndicator size="large" color="#E23744" style={{ marginTop: 12 }} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
+  <NavigationContainer ref={navigationRef}>
       {!user ? (
         // No user logged in - show auth screens
         <AuthStack />
@@ -114,5 +118,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
+  },
+  loadingTitle: {
+    marginTop: 12,
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#1E293B",
   },
 });

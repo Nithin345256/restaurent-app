@@ -7,7 +7,8 @@ import {
   getUserRole,
   getUserProfile,
   updateUserProfile,
-  changePassword 
+  changePassword,
+  logout,
 } from '../controllers/user.js';
 import {
   createHotel,
@@ -61,6 +62,7 @@ const router = express.Router();
 // ==================== AUTH ROUTES ====================
 router.post('/auth/register', register);
 router.post('/auth/login', login);
+router.post('/auth/logout', logout);
 router.get('/auth/role', authMiddleware, getUserRole);
 router.get('/auth/profile', authMiddleware, getUserProfile);
 router.put('/auth/profile', authMiddleware, updateUserProfile);

@@ -248,7 +248,21 @@ export default function AdminDashboard({ navigation }) {
       "Are you sure you want to logout?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: logout }
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Await the context logout to ensure storage is cleared
+              await logout();
+            } catch (err) {
+              console.error('Logout failed:', err);
+            } finally {
+              // Force navigation back to the auth stack
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }
+          }
+        }
       ]
     );
   };

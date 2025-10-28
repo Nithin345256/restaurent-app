@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from "react-native";
 import { AuthContext } from "../context/AuthContext";
+import Logo from "../components/Logo";
 import { api } from "../services/api";
 
 export default function UserHome({ navigation }) {
@@ -85,6 +86,13 @@ export default function UserHome({ navigation }) {
       let fetchedHotels = Array.isArray(response.data)
         ? response.data
         : response.data.hotels || [];
+      // Fix photo URLs to absolute
+      fetchedHotels = fetchedHotels.map(h => ({
+        ...h,
+        photo: h.photo && String(h.photo).startsWith("/uploads/")
+          ? `${api.defaults.baseURL.replace('/api','')}${h.photo}`
+          : h.photo
+      }));
       if (searchQuery) {
         fetchedHotels = fetchedHotels.filter((hotel) =>
           hotel.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -145,7 +153,10 @@ export default function UserHome({ navigation }) {
             )}
           </View>
         )}
-        <TouchableOpacity style={styles.viewMenuButton}>
+        <TouchableOpacity
+          style={styles.viewMenuButton}
+          onPress={() => navigation.navigate("HotelDetails", { hotelId: item._id })}
+        >
           <Text style={styles.viewMenuText}>View Menu →</Text>
         </TouchableOpacity>
       </View>
@@ -183,7 +194,8 @@ export default function UserHome({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#EF4444" />
+            <Logo size={80} />
+            <ActivityIndicator size="large" color="#EF4444" style={{ marginTop: 12 }} />
             <Text style={styles.loadingText}>Loading restaurants...</Text>
           </View>
         </ScrollView>

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { api } from "../services/api";
+import Logo from "../components/Logo";
 import { AuthContext } from "../context/AuthContext";
 
 export default function HotelDetails() {
@@ -189,7 +190,7 @@ export default function HotelDetails() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>🍽️</Text>
+              <Logo size={48} />
             </View>
             <View style={styles.centerContent}>
               <Text style={styles.title}>Loading...</Text>
