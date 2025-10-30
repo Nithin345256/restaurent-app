@@ -3,27 +3,66 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from "@react-navigation/native";
 import { navigationRef } from './navigation/RootNavigation';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, ActivityIndicator, StyleSheet, Text } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import Logo from "./components/Logo";
+import LoadingLogo from "./components/LoadingLogo";
 import { AuthContext, AuthProvider } from "./context/AuthContext";
 import Login from "./pages/LoginScreen";
 import Register from "./pages/RegisterScreen";
 import UserHome from "./pages/UserHome";
-import HotelDetails from "./pages/HotelDetails";
+import SearchScreen from "./pages/SearchScreen";
+import CartScreen from "./pages/CartScreen";
+// Use the cleaned replacement component after fixing the original file
+import HotelDetails from "./pages/HotelDetailsNew";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import HotelHome from "./pages/HotelHome";
 import AdminDashboard from "./pages/AdminDashboard";
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// User Bottom Tab Navigation
+function UserTabs() {
+  return (
+    <Tab.Navigator
+      initialRouteName="Home"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Search') {
+            iconName = focused ? 'search' : 'search-outline';
+          } else if (route.name === 'Cart') {
+            iconName = focused ? 'cart' : 'cart-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#E23744',
+        tabBarInactiveTintColor: 'gray',
+      })}
+    >
+      {/* Order determines tab positions: left -> right. Place Home in the middle. */}
+      <Tab.Screen name="Search" component={SearchScreen} />
+      <Tab.Screen name="Home" component={UserHome} />
+      <Tab.Screen name="Cart" component={CartScreen} />
+    </Tab.Navigator>
+  );
+}
 
 // User Navigation Stack
 function UserStack() {
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName="UserHome"
+      initialRouteName="UserTabs"
     >
-      <Stack.Screen name="UserHome" component={UserHome} />
+      <Stack.Screen name="UserTabs" component={UserTabs} />
       <Stack.Screen name="HotelDetails" component={HotelDetails} />
       <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} />
     </Stack.Navigator>
@@ -72,29 +111,24 @@ function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Logo size={96} />
-        <Text style={styles.loadingTitle}>Ahaarika</Text>
+        <LoadingLogo size={96} />
+        <Text style={styles.loadingTitle}>AHAARIKA</Text>
         <ActivityIndicator size="large" color="#E23744" style={{ marginTop: 12 }} />
       </View>
     );
   }
 
   return (
-  <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef}>
       {!user ? (
-        // No user logged in - show auth screens
         <AuthStack />
       ) : user.role === "user" ? (
-        // User role - show user screens
         <UserStack />
       ) : user.role === "hotel" ? (
-        // Hotel role - show hotel screens
         <HotelStack />
       ) : user.role === "admin" ? (
-        // Admin role - show admin screens
         <AdminStack />
       ) : (
-        // Unknown role - fallback to auth
         <AuthStack />
       )}
     </NavigationContainer>

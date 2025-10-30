@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
   // Logout relies on AppNavigator's conditional rendering to show AuthStack.
   const logoutAndNavigate = async () => {
     await logout();
-    // No explicit navigation reset needed; AppNavigator will render AuthStack when user is null.
+    resetToLogin();
   };
 
   return (

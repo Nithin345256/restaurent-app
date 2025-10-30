@@ -12,9 +12,10 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 // CORS - must be FIRST
+// Reflect request origin and avoid wildcard with credentials to prevent CORS errors
 app.use(cors({
-  origin: '*',
-  credentials: true,
+  origin: true,
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 }));
@@ -70,3 +71,12 @@ const startServer = async () => {
 };
 
 startServer();
+
+// Global process-level error logging to avoid silent failures
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔴 Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('🔴 Uncaught Exception thrown:', err);
+});

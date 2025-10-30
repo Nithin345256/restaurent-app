@@ -16,7 +16,7 @@ export default function Header({ title, showLogout = false }) {
 
   return (
     <View style={styles.header}>
-      <Text style={styles.title}>CService</Text>
+      <Text style={styles.title}>AHAARIKA</Text>
       <Text style={styles.subtitle}>{title}</Text>
       {showLogout && (
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>

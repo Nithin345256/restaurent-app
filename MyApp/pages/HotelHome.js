@@ -48,6 +48,7 @@ export default function HotelDashboard({ navigation }) {
   const [commonMenuItems, setCommonMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingMenuItemId, setEditingMenuItemId] = useState(null); // New state for editing
 
   // Bottom navigation tabs
   const [activeTab, setActiveTab] = useState('menu'); // 'menu' | 'add' | 'profile'
@@ -86,13 +87,36 @@ export default function HotelDashboard({ navigation }) {
       const hotelRes = await api.get('/hotels/my-hotel/details');
       if (hotelRes.data) {
         setIsRegistered(true);
-        setHotel(hotelRes.data);
+        let fetchedHotel = hotelRes.data;
+        // Fix hotel photo URL
+        if (fetchedHotel.photo && fetchedHotel.photo.startsWith("/uploads/")) {
+          fetchedHotel.photo = `${api.defaults.baseURL.replace('/api','')}${fetchedHotel.photo}`;
+        }
+
+        // Fix photo URLs to be absolute for menu items
+        if (hotelRes.data.menu && Array.isArray(hotelRes.data.menu)) {
+          fetchedHotel.menu = hotelRes.data.menu.map(item => ({
+            ...item,
+            photo: item.photo && item.photo.startsWith("/uploads/") 
+              ? `${api.defaults.baseURL.replace('/api','')}${item.photo}` 
+              : item.photo
+          }));
+        }
+        setHotel(fetchedHotel);
       } else {
         setIsRegistered(false);
         setHotel(null);
       }
       const commonRes = await api.get('/common-menu');
-      setCommonMenuItems(Array.isArray(commonRes.data) ? commonRes.data : []);
+      let fetchedCommonItems = Array.isArray(commonRes.data) ? commonRes.data : (commonRes.data.commonMenuItems || []);
+      // Fix photo URLs to be absolute for common menu items
+      fetchedCommonItems = fetchedCommonItems.map(item => ({
+        ...item,
+        photo: item.photo && item.photo.startsWith("/uploads/") 
+          ? `${api.defaults.baseURL.replace('/api','')}${item.photo}` 
+          : item.photo
+      }));
+      setCommonMenuItems(fetchedCommonItems);
     } catch (error) {
       if (error.response?.status === 404) {
         setIsRegistered(false);
@@ -200,7 +224,7 @@ export default function HotelDashboard({ navigation }) {
     }
   };
 
-  const handleAddMenuItem = async () => {
+  const handleSaveMenuItem = async () => { // Renamed from handleAddMenuItem
     if (!menuForm.name || !menuForm.price) {
       Alert.alert('Error', 'Name and price are required');
       return;
@@ -225,17 +249,83 @@ export default function HotelDashboard({ navigation }) {
         type: menuForm.type,
         mealType: menuForm.mealType,
       };
-      const res = await api.post('/hotels/add-menu-item', payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setHotel(res.data.hotel);
-      Alert.alert('Success', 'Menu item added');
+
+      console.log('handleSaveMenuItem called. editingMenuItemId:', editingMenuItemId); // Diagnostic log
+      let res;
+      if (editingMenuItemId) {
+        // Update existing item
+        res = await api.put(`/hotels/${hotel._id}/menu/${editingMenuItemId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        Alert.alert('Success', 'Menu item updated');
+      } else {
+        // Add new item
+        res = await api.post('/hotels/add-menu-item', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        Alert.alert('Success', 'Menu item added');
+      }
+      
+      let updatedHotel = res.data.hotel;
+      // Fix photo URLs after update
+      if (updatedHotel.menu && Array.isArray(updatedHotel.menu)) {
+        updatedHotel.menu = updatedHotel.menu.map(item => ({
+          ...item,
+          photo: item.photo && item.photo.startsWith("/uploads/") ? `${api.defaults.baseURL.replace('/api','')}${item.photo}` : item.photo
+        }));
+      }
+      setHotel(updatedHotel);
+      // Reset form and editing state
       setMenuForm({ name: '', category: '', foodType: 'veg', price: '', thaliEligible: false, type: 'single', mealType: 'breakfast' });
+      setEditingMenuItemId(null);
     } catch (e) {
-      Alert.alert('Error', e.response?.data?.message || 'Failed to add menu item');
+      console.error('API Error:', e.response?.data || e.message); // Enhanced error log
+      Alert.alert('Error', e.response?.data?.message || 'Failed to save menu item');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleEditMenuItem = (item) => {
+    setEditingMenuItemId(item._id);
+    setMenuForm({
+      name: item.name,
+      category: item.category || '',
+      foodType: item.foodType,
+      price: String(item.price), // Convert to string for TextInput
+      thaliEligible: item.thaliEligible,
+      type: item.type,
+      mealType: item.mealType,
+    });
+    setActiveTab('add'); // Switch to add tab to edit
+  };
+
+  const handleDeleteMenuItem = async (menuItemId) => {
+    Alert.alert(
+      "Delete Menu Item",
+      "Are you sure you want to delete this menu item?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/hotels/menu-item/${menuItemId}`);
+              Alert.alert("Success", "Menu item deleted successfully!");
+              fetchData(); // Refresh the menu list
+            } catch (e) {
+              Alert.alert("Error", e.response?.data?.message || "Failed to delete menu item");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMenuItemId(null);
+    setMenuForm({ name: '', category: '', foodType: 'veg', price: '', thaliEligible: false, type: 'single', mealType: 'breakfast' });
   };
 
   const handleAddCommonItemPrompt = (commonItemId, name) => {
@@ -306,17 +396,27 @@ export default function HotelDashboard({ navigation }) {
         {filteredMenuItems.length > 0 ? (
           filteredMenuItems.map((item) => (
             <View key={item._id} style={styles.menuItem}>
-              {item.photo ? (
-                <Image source={{ uri: item.photo }} style={styles.menuItemImage} />
-              ) : (
-                <View style={[styles.menuItemImage, { backgroundColor: '#E5E7EB' }]} />
-              )}
+              <Image source={item.photo ? { uri: item.photo } : { uri: 'https://via.placeholder.com/200x200/eee/999?text=No+Food+Image' }} style={styles.menuItemImage} />
               <View style={styles.menuItemInfo}>
                 <Text style={styles.menuItemName}>{item.name}</Text>
                 <Text style={styles.menuItemDetails}>
                   {(item.mealType || 'breakfast')} • {(item.category || 'N/A')} • {(item.foodType || 'veg')} • ₹{item.price}
                 </Text>
                 {item.thaliEligible ? <Text style={styles.thaliTag}>Available in Thali</Text> : null}
+              </View>
+              <View style={styles.menuItemActions}>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => handleEditMenuItem(item)}
+                >
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteMenuItem(item._id)}
+                >
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
               </View>
             </View>
           ))
@@ -380,7 +480,7 @@ export default function HotelDashboard({ navigation }) {
       ) : (
         <>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Add Menu Item</Text>
+            <Text style={styles.cardTitle}>{editingMenuItemId ? 'Edit Menu Item' : 'Add Menu Item'}</Text>
             <Text style={styles.cardSubtitle}>Photo will be added by admin</Text>
 
             <View style={styles.inputGroup}>
@@ -428,8 +528,8 @@ export default function HotelDashboard({ navigation }) {
               <Text style={styles.switchLabel}>Available in Thali</Text>
               <Switch value={menuForm.thaliEligible} onValueChange={(v) => setMenuForm({ ...menuForm, thaliEligible: v })} trackColor={{ false: '#D1D5DB', true: '#FCA5A5' }} thumbColor={menuForm.thaliEligible ? '#EF4444' : '#F3F4F6'} />
             </View>
-            <TouchableOpacity style={[styles.submitButton, submitting && styles.submitButtonDisabled]} disabled={submitting} onPress={handleAddMenuItem}>
-              {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>Add to Menu</Text>}
+            <TouchableOpacity style={[styles.submitButton, submitting && styles.submitButtonDisabled]} disabled={submitting} onPress={handleSaveMenuItem}>
+              {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{editingMenuItemId ? 'Update Menu Item' : 'Add to Menu'}</Text>}
             </TouchableOpacity>
           </View>
 
@@ -457,24 +557,31 @@ export default function HotelDashboard({ navigation }) {
   const renderProfileTab = () => (
     <View style={styles.tabContent}>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Hotel Information</Text>
-        {hotel ? (
-          <>
-            <Text style={styles.infoText}>{hotel.name}</Text>
-            <Text style={styles.infoText}>{hotel.address}, {hotel.place}</Text>
-            <View style={styles.optionsRow}>
-              {hotel.options?.map((opt) => (
-                <View key={opt} style={opt === 'veg' ? styles.vegBadge : styles.nonVegBadge}>
-                  <Text style={opt === 'veg' ? styles.vegText : styles.nonVegText}>
-                    {opt === 'veg' ? '🟢 Veg' : '🔴 Non-Veg'}
-                  </Text>
+        <View style={styles.profileInfoContainer}>
+          <View style={styles.profileInfoText}>
+            <Text style={styles.cardTitle}>Hotel Information</Text>
+            {hotel ? ( // Check if hotel data exists
+              <>
+                <Text style={styles.infoText}>{hotel.name}</Text>
+                <Text style={styles.infoText}>{hotel.address}, {hotel.place}</Text>
+                <View style={styles.optionsRow}>
+                  {hotel.options?.map((opt) => (
+                    <View key={opt} style={opt === 'veg' ? styles.vegBadge : styles.nonVegBadge}>
+                      <Text style={opt === 'veg' ? styles.vegText : styles.nonVegText}>
+                        {opt === 'veg' ? '🟢 Veg' : '🔴 Non-Veg'}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-          </>
-        ) : (
-          <Text style={styles.infoText}>No hotel registered yet</Text>
-        )}
+              </>
+            ) : (
+              <Text style={styles.infoText}>No hotel registered yet</Text>
+            )}
+          </View>
+          {hotel?.photo && (
+            <Image source={{ uri: hotel.photo }} style={styles.profilePhoto} />
+          )}
+        </View>
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Account</Text>
@@ -580,6 +687,33 @@ const styles = StyleSheet.create({
   menuItemName: { fontSize: 16, fontWeight: '600', color: '#1E293B', marginBottom: 2 },
   menuItemDetails: { fontSize: 13, color: '#64748B' },
   thaliTag: { fontSize: 12, color: '#EF4444', marginTop: 4 },
+  menuItemActions: {
+    flexDirection: 'column',
+    marginLeft: 12,
+    gap: 8,
+  },
+  editButton: {
+    backgroundColor: '#3B82F6', // Blue for edit
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444', // Red for delete
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
 
   // Cards & inputs
   card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
@@ -605,6 +739,17 @@ const styles = StyleSheet.create({
   submitButtonDisabled: { backgroundColor: '#F3F4F6' },
   submitButtonText: { color: '#FFFFFF', fontWeight: '600' },
   infoText: { color: '#475569', marginBottom: 6 },
+  cancelEditButton: {
+    backgroundColor: '#64748B', // Gray for cancel
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  cancelEditButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
 
   // Common items carousel
   commonItemCard: { width: 120, marginRight: 10, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, padding: 10, alignItems: 'center', backgroundColor: '#F9FAFB' },
@@ -646,4 +791,18 @@ const styles = StyleSheet.create({
   nonVegText: { color: '#EF4444', fontSize: 11, fontWeight: '500' },
   actionButton: { backgroundColor: '#EF4444', borderRadius: 10, padding: 12, alignItems: 'center' },
   actionButtonText: { color: '#FFFFFF', fontWeight: '600' },
+  profileInfoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  profileInfoText: {
+    flex: 1,
+  },
+  profilePhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    marginLeft: 16,
+  },
 });

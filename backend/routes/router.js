@@ -84,7 +84,7 @@ router.delete('/hotels/:id', authMiddleware, deleteHotel); // Delete hotel
 router.post('/hotels/:id/menu', authMiddleware, hotelMiddleware, addMenuItem); // Add menu item (without photo)
 router.post('/hotels/add-menu-item', authMiddleware, hotelMiddleware, addMenuItem);
 router.put('/hotels/:id/menu/:menuId', authMiddleware, hotelMiddleware, updateMenuItem); // Update menu item
-router.delete('/hotels/:id/menu/:menuId', authMiddleware, deleteMenuItem); // Delete menu item
+router.delete('/hotels/:id/menu/:menuId', authMiddleware, hotelMiddleware, deleteMenuItem); // Delete menu item
 
 // ==================== COMMON MENU ROUTES ====================
 router.get('/common-menu', getCommonMenuItems); // Get all common menu items

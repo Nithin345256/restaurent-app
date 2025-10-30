@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
 import { Picker } from "@react-native-picker/picker";
+import AdminBottomNavigation from "../components/AdminBottomNavigation";
 
 export default function AdminDashboard({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -23,9 +24,9 @@ export default function AdminDashboard({ navigation }) {
   const [hotels, setHotels] = useState([]);
   const [pendingMenuItems, setPendingMenuItems] = useState([]);
   const [commonMenuItems, setCommonMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Keep loading state
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState("hotels"); // Default to 'hotels'
 
   const [commonForm, setCommonForm] = useState({
     name: "",
@@ -34,6 +35,7 @@ export default function AdminDashboard({ navigation }) {
     thaliEligible: false,
     photo: null,
   });
+  const [refreshing, setRefreshing] = useState(false); // For pull-to-refresh
 
   useEffect(() => {
     if (!user?.id || user?.role !== "admin") {
@@ -46,6 +48,11 @@ export default function AdminDashboard({ navigation }) {
     fetchData();
   }, [user, navigation]);
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, []);
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -57,9 +64,24 @@ export default function AdminDashboard({ navigation }) {
       ]);
 
       setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.users || []);
-      setHotels(Array.isArray(hotelsRes.data) ? hotelsRes.data : hotelsRes.data.hotels || []);
-      setPendingMenuItems(Array.isArray(pendingRes.data) ? pendingRes.data : pendingRes.data.hotels || []);
-      setCommonMenuItems(Array.isArray(commonRes.data) ? commonRes.data : commonRes.data.commonMenuItems || []);
+      let fetchedHotels = Array.isArray(hotelsRes.data) ? hotelsRes.data : hotelsRes.data.hotels || [];
+      // Fix photo URLs to be absolute for hotel menu items
+      fetchedHotels = fetchedHotels.map(hotel => ({
+        ...hotel,
+        menu: hotel.menu ? hotel.menu.map(item => ({
+          ...item,
+          photo: item.photo && item.photo.startsWith("/uploads/") ? `${api.defaults.baseURL.replace('/api','')}${item.photo}` : item.photo
+        })) : []
+      }));
+      setHotels(fetchedHotels);
+      setPendingMenuItems(Array.isArray(pendingRes.data) ? pendingRes.data : pendingRes.data.hotels || []);      
+      let fetchedCommonItems = Array.isArray(commonRes.data) ? commonRes.data : commonRes.data.commonMenuItems || [];
+      // Fix photo URLs to be absolute
+      fetchedCommonItems = fetchedCommonItems.map(item => ({
+        ...item,
+        photo: item.photo && item.photo.startsWith("/uploads/") ? `${api.defaults.baseURL.replace('/api','')}${item.photo}` : item.photo
+      }));
+      setCommonMenuItems(fetchedCommonItems);
     } catch (error) {
       console.error("Fetch error:", error.response?.data || error.message);
       Alert.alert("Error", error.response?.data?.message || "Failed to fetch data");
@@ -93,17 +115,29 @@ export default function AdminDashboard({ navigation }) {
     if (!photo) return;
 
     try {
+      const token = await AsyncStorage.getItem("token");
       const formData = new FormData();
+      const uri = photo.uri;
+      const uriParts = uri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+
       formData.append("photo", {
-        uri: photo.uri,
-        type: "image/jpeg",
-        name: "menu-item.jpg",
+        uri: uri,
+        name: `photo.${fileType}`,
+        type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
       });
 
-      await api.post(`/admin/hotels/${hotelId}/menu/${menuId}/photo`, formData);
+      const response = await fetch(`${api.defaults.baseURL}/admin/hotels/${hotelId}/menu/${menuId}/photo`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
 
       Alert.alert("Success", "Photo added successfully!");
-      fetchData();
+      await fetchData(); // Ensure we wait for data to refresh
     } catch (error) {
       Alert.alert("Error", error.response?.data?.message || "Failed to add photo");
     }
@@ -299,7 +333,7 @@ export default function AdminDashboard({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={styles.header}> {/* This header remains at the top */}
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>🍽️</Text>
           </View>
@@ -309,33 +343,6 @@ export default function AdminDashboard({ navigation }) {
           </View>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "pending" && styles.tabActive]}
-            onPress={() => setActiveTab("pending")}
-          >
-            <Text style={[styles.tabText, activeTab === "pending" && styles.tabTextActive]}>Pending</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "hotels" && styles.tabActive]}
-            onPress={() => setActiveTab("hotels")}
-          >
-            <Text style={[styles.tabText, activeTab === "hotels" && styles.tabTextActive]}>Hotels</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "users" && styles.tabActive]}
-            onPress={() => setActiveTab("users")}
-          >
-            <Text style={[styles.tabText, activeTab === "users" && styles.tabTextActive]}>Users</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "common" && styles.tabActive]}
-            onPress={() => setActiveTab("common")}
-          >
-            <Text style={[styles.tabText, activeTab === "common" && styles.tabTextActive]}>Common</Text>
           </TouchableOpacity>
         </View>
 
@@ -473,9 +480,13 @@ export default function AdminDashboard({ navigation }) {
                 <TouchableOpacity style={styles.photoButton} onPress={selectPhotoForCommon}>
                   <Text style={styles.photoButtonText}>Choose Photo</Text>
                 </TouchableOpacity>
-              </View>
+              </View>              
               <TouchableOpacity style={styles.submitButton} onPress={handleCreateCommonItem} disabled={submitting}>
-                <Text style={styles.submitButtonText}>{submitting ? "Creating..." : "Create"}</Text>
+                {submitting ?
+                  <ActivityIndicator color="#FFFFFF" />
+                 : 
+                  <Text style={styles.submitButtonText}>Create</Text>
+                }
               </TouchableOpacity>
             </View>
             <View style={styles.card}>
@@ -504,6 +515,8 @@ export default function AdminDashboard({ navigation }) {
           </>
         )}
       </ScrollView>
+      {/* Bottom Navigation Bar */}
+      <AdminBottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
     </View>
   );
 }
@@ -512,7 +525,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
-    marginTop: 25,
+    paddingBottom: 70, // Space for the bottom navigation bar
   },
   scrollContent: {
     flexGrow: 1,
@@ -573,37 +586,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 12,
     fontWeight: "500",
-  },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: "#EF4444",
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#64748B",
-  },
-  tabTextActive: {
-    color: "#FFFFFF",
   },
   card: {
     backgroundColor: "#FFFFFF",
